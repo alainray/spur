@@ -4,7 +4,7 @@ from torchvision.datasets import MNIST
 from typing import Any, Callable, Dict, List, Optional, Tuple
 from torch.utils.data import DataLoader
 from params import args, train_args, play_args
-
+from copy import deepcopy
 
 n_classes = {'cmnist': 2, 'cfmnist': 2}
 
@@ -19,7 +19,6 @@ class TMNIST(MNIST):
         """
         Args:
             index (int): Index
-
         Returns:
             tuple: (image, target) where target is index of the target class.
         """
@@ -39,7 +38,6 @@ class TMNIST(MNIST):
     
 class TFashionMNIST(TMNIST):
     """`Fashion-MNIST <https://github.com/zalandoresearch/fashion-mnist>`_ Dataset.
-
     Args:
         root (string): Root directory of dataset where ``FashionMNIST/raw/train-images-idx3-ubyte``
             and  ``FashionMNIST/raw/t10k-images-idx3-ubyte`` exist.
@@ -75,8 +73,8 @@ mnist = TMNIST("../datasets", train=True, download=True)
 fmnist = TFashionMNIST("../datasets", train=True, download=True)
 mnist_train = (mnist.data[:50000], mnist.targets[:50000])
 mnist_val = (mnist.data[50000:], mnist.targets[50000:])
-fmnist_train = (mnist.data[:50000], mnist.targets[:50000])
-fmnist_val = (mnist.data[50000:], mnist.targets[50000:])
+fmnist_train = (fmnist.data[:50000], fmnist.targets[:50000])
+fmnist_val = (fmnist.data[50000:], fmnist.targets[50000:])
 
 rng_state = np.random.get_state()
 np.random.shuffle(mnist_train[0].numpy())
@@ -87,22 +85,31 @@ np.random.set_state(rng_state)
 np.random.shuffle(fmnist_train[1].numpy())
 # Build environments
 
-def make_environment(images, labels, e):
+def make_environment(images, labels, e, baseline=False, duplicate=False):
     def torch_bernoulli(p, size):
         return (torch.rand(size) < p).float()
     def torch_xor(a, b):
         return (a-b).abs() # Assumes both inputs are either 0 or 1
-    # 2x subsample for computational convenience
-    #images = images.reshape((-1, 28, 28))[:, ::2, ::2]
-    # Assign a binary label based on the digit; flip label with probability 0.25
+    
+    # Assign a binary label based on the digit
+    
     labels = (labels < 5).float()
-    #labels = torch_xor(labels, torch_bernoulli(0.25, len(labels)))
-    # Assign a color based on the label; flip the color with probability e
-    colors = torch_xor(labels, torch_bernoulli(1-e, len(labels)))
-    # Apply the color to the image by zeroing out the other color channel
+    labels = torch_xor(labels, torch_bernoulli(0.0, len(labels)))
     images = torch.stack([images, images], dim=1)
-    images[torch.tensor(range(len(images))), (1-colors).long(), :, :] *= 0
+    if not baseline:
+        # Assign a color based on the label; flip the color with probability e
+        colors = torch_xor(labels, torch_bernoulli(1-e, len(labels)))
+        # Apply the color to the image by zeroing out the other color channel
+        imgs2 = deepcopy(images)
+        images[torch.tensor(range(len(images))), (1-colors).long(), :, :] *= 0 # copy 1
 
+        if duplicate:
+            imgs2[torch.tensor(range(len(images))), (colors).long(), :, :] *= 0 # copy 2
+            n_els, *_ = imgs2.shape
+            cutoff_index = int(n_els*args.aid_perc)
+            images = torch.cat((images, imgs2[:cutoff_index]))
+            labels = torch.cat((labels, labels[:cutoff_index]))
+        print(images.shape, labels.shape)
     return {
     'images': (images.float() / 255.),
     'labels': labels[:, None]
@@ -124,11 +131,11 @@ else:
     play_train = fmnist_train
     play_test = fmnist_val
 
-train_env = make_environment(train_train[0], train_train[1], p)
-test_env = make_environment(train_test[0], train_test[1], 1-p)
+train_env = make_environment(train_train[0], train_train[1], p, baseline=args.train_baseline, duplicate=False)
+test_env = make_environment(train_test[0], train_test[1], 1-p, baseline=args.train_baseline, duplicate=False)
 
-play_train_env = make_environment(play_train[0], play_train[1], p)
-play_test_env = make_environment(play_test[0], play_test[1], 1-p)
+play_train_env = make_environment(play_train[0], play_train[1], 1-p, baseline=args.play_baseline)
+play_test_env = make_environment(play_test[0], play_test[1], 1-p, baseline=args.play_baseline)
 
 train_ds = TMNIST("../datasets")
 test_ds = TMNIST("../datasets")

@@ -4,7 +4,40 @@ from functools import wraps
 from time import time
 import numpy as np
 import os
+import torchvision
+import matplotlib.pyplot as plt
 
+
+def pretty_print(metrics, args, mode):
+    line = f"={args[f'{mode}_iter']-1:04d}=[LOSS] "
+    for k,v in metrics.items():
+        for k1, v1 in v.items():
+            if "loss" in k1:
+                line += f"{k.upper()}: {v1:.3f} "
+    line += "- [ACC] "
+    for k,v in metrics.items():
+        for k1, v1 in v.items():
+            if 'acc' in k1:
+                line += f"{k.upper()}: {v1:.2f}% "
+    print(line)
+def show_data(dls, envs, splits):
+    def plot_dataset(dataset, caption=""):
+        # Create a grid of images from the training set
+        images = [torch.cat((dataset[i],torch.zeros((1,28,28)))) for i in range(100)]
+        grid = torchvision.utils.make_grid(torch.stack(images), nrow=10)
+
+        # Display the grid of images
+        plt.imshow(grid.permute(1, 2, 0))
+        plt.axis('off')
+        plt.title(caption)
+        plt.show()
+
+    for env in envs:
+        for split in splits:
+            train_dataset = dls[env][split].dataset.data
+            num=(dls[env][split].dataset.targets == 0).sum()
+            num1=(dls[env][split].dataset.targets == 1).sum()
+            plot_dataset(train_dataset,caption=f"{env}-{split} 0:{100*num/(num+num1):.2f}% 1:{100*num1/(num+num1):.2f}%")
 
 def set_random_state(args):
     os.environ['CUBLAS_WORKSPACE_CONFIG']=':4096:8'
