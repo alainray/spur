@@ -146,11 +146,17 @@ class MLP(nn.Module):
         for lin in [lin1, lin2, lin3]:
             nn.init.xavier_uniform_(lin.weight)
             nn.init.zeros_(lin.bias)
-        self._main = nn.Sequential(lin1, nn.ReLU(True), lin2, nn.ReLU(True), lin3)
-    
+        #self._main = nn.Sequential(lin1, nn.ReLU(True), lin2, nn.ReLU(True), lin3)
+        self.features = nn.Sequential()
+        self.features.add_module('fc1',lin1)
+        self.features.add_module('relu1',nn.ReLU(inplace=True))
+        self.features.add_module('fc2',lin2)
+        self.features.add_module('relu2',nn.ReLU(inplace=True))
+        self.features.add_module('fc',lin3)
+
     def forward(self, input):
-        out = input.view(input.shape[0], 2 * 28 * 28)
-        out = self._main(out)
+        out = input.view(input.shape[0], 3 * 32 * 32)
+        out = self.features(out)
         return out
 
 class SimpleCNN(nn.Module):
@@ -166,7 +172,7 @@ class SimpleCNN(nn.Module):
             stride=2
 
         layer = nn.Sequential()
-        layer.add_module('conv1',nn.Conv2d(2, num_channels[0]*N, kernel_size=3, stride=stride))
+        layer.add_module('conv1',nn.Conv2d(3, num_channels[0]*N, kernel_size=3, stride=stride))
         layer.add_module('relu1',nn.ReLU(inplace=True))
         if add_pooling:
             layer.add_module('pool1',nn.MaxPool2d(kernel_size=2, stride=2))
@@ -178,10 +184,11 @@ class SimpleCNN(nn.Module):
         layer.add_module('relu3',nn.ReLU(inplace=True))
         if add_pooling:
             layer.add_module('pool3',nn.MaxPool2d(kernel_size=2, stride=1))
+        layer.add_module('gap', nn.AdaptiveAvgPool2d((6,6)))
         layer.add_module('flatten', nn.Flatten())
         self.features = layer
 
-        self.fc = nn.Sequential(nn.Linear(512*N, num_classes))
+        self.fc = nn.Sequential(nn.Linear(4608*N, num_classes))
         '''for lin in [lin1, lin2, lin3]:
             nn.init.xavier_uniform_(lin.weight)
             nn.init.zeros_(lin.bias)'''
@@ -220,15 +227,19 @@ def restart_model(args, model):
             #if m.bias is not None:
             #    nn.init.kaiming_normal_(m.bias)
 
-    if args.arch == "simplecnn":
+    if args.model == "simplecnn":
         layers = ["features.conv1", "features.conv2", "features.conv3","fc"]
-    elif "resnet" in args.arch:
+        
+    elif args.model == "mlp":
+        layers = ["features.fc1", "features.fc2","features.fc"]
+    elif "resnet" in args.model:
         layers = make_resnet_layers(args.arch)
     else:
         print("Model Not Supported!")
 
     #print(f"Affecting layers: {layers[-args.n_layers:]}")
     for name, module in model.named_modules():
+       # print(layers[-args.n_layers:])
         if name in layers[-args.n_layers:]:
             module.apply(initialize)
     return model
@@ -236,21 +247,24 @@ def restart_model(args, model):
 
 
 if __name__ == '__main__':
+    #from params import args
     N = 2
-    x = torch.rand(10,3,299,299)
-    args = edict()
-    args.arch = "resnet50"
-    args.n_layers = 3       
-    model = resnet18()
+    x = torch.rand(10,3,32,32)
+    #args = edict()
+    args.model = "mlp"
+    args.n_layers = 2     
+    #model = MLP(args)
     #model.fc = nn.Identity()
 
-    #model = SimpleCNN([32,64,128],4,add_pooling=False)
-    print(model.conv1[0].weight[0][0][0])
-    print(model.conv5_x[1].residual_function[0].weight[0][0][0])
-    print(model.fc.weight[0])
-    model = restart_model(args, model)
-    print(model.conv1[0].weight[0][0][0])
-    print(model.conv5_x[1].residual_function[0].weight[0][0][0])
-    print(model.fc.weight[0])
+    model = SimpleCNN([32,64,128],1,add_pooling=False)
+    #print(model.features.fc1.weight[0][0])
+    #print(model.conv5_x[1].residual_function[0].weight[0][0][0])
+    #print(model.features.fc.weight[0][0])
+    #model = restart_model(args, model)
+    #print(model.features.fc1.weight[0][0])
+    #print(model.conv5_x[1].residual_function[0].weight[0][0][0])
+    #print(model.features.fc.weight[0][0])
     #for name, module in model.named_modules():
     #    print(name)#, module)
+
+    model(x).shape

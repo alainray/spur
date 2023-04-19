@@ -1,12 +1,12 @@
 import torch.nn as nn 
 import torch
-from utils import timing, AverageMeter, pretty_print
+from utils import AverageMeter, pretty_print
 
 
 #@timing
 def train(model, dl, opt, args, caption=''):
     
-    mode = 'play' if 'play' in caption else 'train'
+    mode = 'play' if 'play' in caption else 'task'
     loss_meter = AverageMeter()
     acc_meter = AverageMeter()
     total_batches = len(dl)
@@ -52,26 +52,41 @@ def train(model, dl, opt, args, caption=''):
     return model, args , metrics
 
 #@timing
-def evaluate_splits(model, dls, envs, splits, args, mode):
-    results = dict()
+'''
+ evaluate splits(...) :
 
-    for env in envs:
-        for split in splits:
-            dl = dls[env][split]
-            _, _, metrics = evaluate(model, dl, args, env + '-' + split)
-            results[env + '-' + split] = metrics
+ Function for evaluating performance on a set of evaluation datasets
+
+ Args:
+- model: PyTorch model where you want to evaluate.
+- dls: a dict() where every key is a split and every value is a dataloader.
+- args: dictionary with all experiment arguments.
+- stage: ['task', 'play]: whether we are evaluating after training the task or playing.
+'''
+
+def evaluate_splits(model, dls, args, stage):
     
-    pretty_print(results, args, mode)
+    all_results = dict()
+    for ds_name, ds in dls.items():
+        results = dict()
 
+        for split, dl in ds.items(): 
+            metrics = evaluate(model, dl, split)
+            for k, v in metrics.items():
+                results[k] = v
+        all_results[ds_name] = results
+
+    #print(results)
+    pretty_print(all_results,args,stage)
+    for ds_name, results in all_results.items():
+        args.exp.log_metrics(results, prefix=ds_name, step=args[f'task_iter'], epoch=args[f'task_iter'])
     return results
 
 #@timing
-def evaluate(model, dl, args, caption='train_test'):
-    mode = 'play' if 'play' in caption else 'train'
+def evaluate(model, dl, caption='train'):
     loss_meter = AverageMeter()
     acc_meter = AverageMeter()
-    total_batches = len(dl)
-    metrics = {}#'loss': None, 'acc': None}
+    metrics = {}
     
     model.eval()
     
@@ -96,11 +111,8 @@ def evaluate(model, dl, args, caption='train_test'):
             loss_meter.update(cur_loss, bs)
             acc_meter.update(acc, bs) 
 
-            metrics[f'{caption}_loss'] = float(cur_loss)
-            metrics[f'{caption}_acc'] = float(100*acc_meter.avg)
-            metrics[f'{mode}_iter'] = args[f'{mode}_iter']
-        # Report results
-        #print(f'[{caption.upper():11s}] [{(n_batch+1)*bs:05d}/{total_batches*bs}] {cur_iter:03d} Loss: {loss:.3f} Acc: {100*acc:.2f}%')
-        args.exp.log_metrics(metrics, prefix=mode, step=args[f'train_iter'], epoch=args[f'play_iter'])
+    # Report results
+    metrics[f'{caption}_loss'] = float(loss_meter.avg)
+    metrics[f'{caption}_acc'] = float(100*acc_meter.avg)
        
-    return model, args, metrics
+    return metrics

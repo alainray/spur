@@ -6,20 +6,32 @@ import numpy as np
 import os
 import torchvision
 import matplotlib.pyplot as plt
+import random
 
+def pretty_print(m, args, mode):
+    
+    line = f"{args[f'{mode}_iter']-1:04d} |"
+    min_split = {'train': "tr", "test": 'ts', 'val': 'vl'}
+    for ds_name, metrics in m.items():
 
-def pretty_print(metrics, args, mode):
-    line = f"={args[f'{mode}_iter']-1:04d}=[LOSS] "
-    for k,v in metrics.items():
-        for k1, v1 in v.items():
-            if "loss" in k1:
-                line += f"{k.upper()}: {v1:.3f} "
-    line += "- [ACC] "
-    for k,v in metrics.items():
-        for k1, v1 in v.items():
-            if 'acc' in k1:
-                line += f"{k.upper()}: {v1:.2f}% "
+        line+= f"<{ds_name.upper()}>=[LOSS] "
+
+        for k, v in metrics.items():
+    
+            split = k.split('_')[0]
+            metric = k.split('_')[1]
+            if metric == 'loss':
+                line += f"{min_split[split]}: {v:.3f} "
+        line += "- [ACC] "
+    
+        for k, v in metrics.items():
+            split = k.split('_')[0]
+            metric = k.split('_')[1]
+            if metric == 'acc':
+                line += f"{min_split[split]}: {v:.1f} "
+        line += '|'
     print(line)
+    
 def show_data(dls, envs, splits):
     def plot_dataset(dataset, caption=""):
         # Create a grid of images from the training set
@@ -41,10 +53,11 @@ def show_data(dls, envs, splits):
 
 def set_random_state(args):
     os.environ['CUBLAS_WORKSPACE_CONFIG']=':4096:8'
-    torch.use_deterministic_algorithms(True)
+    #torch.use_deterministic_algorithms(True)
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)
     torch.backends.cudnn.benchmark = False
+    random.seed(args.seed)
     np.random.seed(args.seed)   
 
 def timing(f):
@@ -116,3 +129,30 @@ class AverageMeter(object):
 
 def get_prefix(args):
     return "_".join([str(w) for k,w in vars(args).items() if "comet" not in k])
+
+def make_dataset_id(ds_dict):
+    if ds_dict['name'] == 'synmnist':
+        return ds_dict['name'] + '_' + str(ds_dict['p']) + '_' + ds_dict['bg'] 
+
+def save_model(args, model, modifier=""):
+
+    model_id = make_dataset_id(args.task_args.dataset)
+    path = f'{args.save_model_folder}/{args.model}_{model_id}_{args.save_model_path}'
+    torch.save(model.state_dict(), path)
+
+def load_model(model, weights_path):
+    w = torch.load(weights_path)
+    model.load_state_dict(w)
+    return model
+
+def freeze_model(args, model): # Freeze all layers except classifier
+    # Freeze all the layers in the features module
+    if args.model == 'scnn':
+        for param in model.features.parameters():
+            param.requires_grad = False
+
+        # Make sure the parameters in the classifier module are trainable
+        for param in model.fc.parameters():
+            param.requires_grad = True
+    
+    return model
