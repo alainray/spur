@@ -12,12 +12,13 @@ def update_args(args):
         if k != 'dataset':
             args['play_'+k] = v
         for k, v in play_args.dataset.items():
-            args['task_dataset_' + k] = v
-    for k,v in eval_args.items():
-        args['eval_'+k] = v
-        for n_ds, dataset in enumerate(eval_args.dataset):
-            for k, v in dataset.items():
-                args['task_dataset_' + k] = v
+            args['play_dataset_' + k] = v
+    
+    #for k,v in eval_args.items():
+    #    args['eval_'+k] = v
+    #    for n_ds, dataset in enumerate(eval_args.dataset):
+    #        for k, v in dataset.items():
+    #            args['eval_dataset_' + k] = v
     
     #for k, v in args.eval_datasets['eval'].items():
         
@@ -46,12 +47,10 @@ args.dataset_paths = {'synmnist': "SynMNIST"}
 args.hidden_dim = 100
 args.max_cur_iter = 0
 args.n_layers = 1                       # Number of layers to forget
-args.task_baseline = True              # Non Colored version of dataset
-args.play_baseline = False
 task_args.duplicate = False             # Do we add a different color copy of training image to dataset?
 
 task_args.n_interventions = 0
-task_args.total_iterations = 100
+task_args.total_iterations = 5
 task_args.dataset = {'name': 'synmnist', 'p': 0.95 , 'bg': 'nobg', 'splits': ['train','val','test'], 'baseline': False, 'bs': 16000}
 task_args.mode = ["task"
                    #, 'play'
