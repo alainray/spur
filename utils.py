@@ -132,7 +132,7 @@ def get_prefix(args):
 
 def make_dataset_id(ds_dict):
     if ds_dict['name'] == 'synmnist':
-        return ds_dict['name'] + '_' + str(ds_dict['p']) + '_' + ds_dict['bg'] 
+        return ds_dict['name'] + '_' + str(ds_dict['p']) + '_' + ds_dict['bg'] + '_' + ('bs' if ds_dict['baseline'] else 'nobs')
 
 def save_model(args, model, modifier=""):
 
