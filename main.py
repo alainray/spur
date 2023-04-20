@@ -93,6 +93,7 @@ for seed in seeds:
             #args.pretrained_path = f'models/scnn_{spur}_cmnist_baseline.pth'
             args.seed = seed
             args.task_args.dataset['p'] = spur
+            args.task_args.dataset['bg'] = env
             args.eval_datasets['task'] = task_args.dataset
             args = update_args(args)
             #
