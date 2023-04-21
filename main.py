@@ -95,8 +95,8 @@ for seed in seeds:
             args.seed = seed
             
             #args.task_args.dataset['p'] = spur
-            #args.task_args.dataset['bg'] = env
-            #args.eval_datasets['task'] = task_args.dataset
+            args.task_args.dataset['bg'] = env
+            args.eval_datasets['task'] = task_args.dataset
             
             
             args = update_args(args)
