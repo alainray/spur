@@ -91,7 +91,7 @@ for seed in seeds:
             
             #args.spurious_probability = spur
             if args.load_pretrained:
-                args.pretrained_path = f'models/scnn_synmnist_{spur}_{env}_cmnist_baseline.pth'
+                args.pretrained_path = f'models/scnn_synmnist_{spur}_{env}_nobs_cmnist_baseline.pth'
             args.seed = seed
             
             #args.task_args.dataset['p'] = spur
