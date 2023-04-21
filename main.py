@@ -90,11 +90,15 @@ for seed in seeds:
             start = time()
             
             #args.spurious_probability = spur
-            #args.pretrained_path = f'models/scnn_{spur}_cmnist_baseline.pth'
+            if args.load_pretrained:
+                args.pretrained_path = f'models/scnn_synmnist_{spur}_{env}_cmnist_baseline.pth'
             args.seed = seed
-            args.task_args.dataset['p'] = spur
-            args.task_args.dataset['bg'] = env
-            args.eval_datasets['task'] = task_args.dataset
+            
+            #args.task_args.dataset['p'] = spur
+            #args.task_args.dataset['bg'] = env
+            #args.eval_datasets['task'] = task_args.dataset
+            
+            
             args = update_args(args)
             #
             set_random_state(args)
