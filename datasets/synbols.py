@@ -198,21 +198,28 @@ def get_splits(args, p=0.5, bg='nobg', splits = ['train','val'], bs=128, baselin
         #,tt.ColorJitter(0.4, 0.4, 0.4, 0.4)] if self.data_augmentation else [identity_]
     n_channels = 3
 
+    tf = [tt.ToTensor(),
+    tt.Normalize([0.5] * n_channels, [0.5] * n_channels)]
+    #if not baseline:
 
-    if not baseline:
-        tf = [tt.ToTensor(),
-        tt.Normalize([0.5] * n_channels, [0.5] * n_channels)]
-    else:
-        tf = [tt.ToTensor(),
-                   tt.Grayscale(num_output_channels = 3),
-                   tt.Normalize([0.5] * n_channels, [0.5] * n_channels)]
+    #else:
+    #    tf = [tt.ToTensor(),
+    #               tt.Grayscale(num_output_channels = 3),
+    #               tt.Normalize([0.5] * n_channels, [0.5] * n_channels)]
     
     transform = tt.Compose(tf)
 
 
     result = dict()
+
     for s in splits:
         ds = get_dataset(args, p, bg, s)
+        if baseline:
+            ds.x = np.mean(ds.x, axis=3)                                    # Go to grayscale
+            means = np.mean(ds.x, axis=(1,2 ))                              # calc threshold per image
+            ds.x = (ds.x > np.expand_dims(means, axis=(1,2))).astype(float) # apply threshold per image
+            ds.x = np.repeat(np.expand_dims(ds.x, axis=3), 3, axis=3)       # clone channels
+        
         ds.transform = transform
         result[s] = DataLoader(ds, batch_size=bs, shuffle=True)
     return result
@@ -224,6 +231,6 @@ if __name__ == '__main__':
     args.dataset_paths = {'synmnist': "SynMNIST"}
     #dataset = get_dataset(args,p=0.625, env="nobg",split='train',binarize=False)
 #   print(dataset[0])
-    dls = get_splits(args,p=0.625, bg='nobg',splits = ['train','val','test'], bs=128)
+    dls = get_splits(args,p=0.625, bg='nobg',splits = ['train','val','test'], bs=128, baseline=True)
     x, y = next(iter(dls['train']))
     print(x.shape, y.shape)
