@@ -75,7 +75,7 @@ def setup_comet(args, resume_experiment_key=''):
     api_key = args.cometKey # w4JbvdIWlas52xdwict9MwmyH
     workspace = args.cometWs # alainray
     project_name = args.cometName # learnhard
-    enabled = bool(api_key) and bool(workspace)
+    enabled = bool(api_key) and bool(workspace) and args.use_comet
     disabled = not enabled
 
     print(f"Setting up comet logging using: {{api_key={api_key}, workspace={workspace}, enabled={enabled}}}")

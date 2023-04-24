@@ -217,7 +217,7 @@ def get_splits(args, p=0.5, bg='nobg', splits = ['train','val'], bs=128, baselin
         if baseline:
             ds.x = np.mean(ds.x, axis=3)                                    # Go to grayscale
             means = np.mean(ds.x, axis=(1,2 ))                              # calc threshold per image
-            ds.x = (ds.x > np.expand_dims(means, axis=(1,2))).astype(float) # apply threshold per image
+            ds.x = (ds.x > np.expand_dims(means, axis=(1,2))).astype(np.float32) # apply threshold per image
             ds.x = np.repeat(np.expand_dims(ds.x, axis=3), 3, axis=3)       # clone channels
         
         ds.transform = transform
@@ -234,3 +234,4 @@ if __name__ == '__main__':
     dls = get_splits(args,p=0.625, bg='nobg',splits = ['train','val','test'], bs=128, baseline=True)
     x, y = next(iter(dls['train']))
     print(x.shape, y.shape)
+    print(x)
