@@ -13,14 +13,6 @@ def update_args(args):
             args['play_'+k] = v
         for k, v in play_args.dataset.items():
             args['play_dataset_' + k] = v
-    
-    #for k,v in eval_args.items():
-    #    args['eval_'+k] = v
-    #    for n_ds, dataset in enumerate(eval_args.dataset):
-    #        for k, v in dataset.items():
-    #            args['eval_dataset_' + k] = v
-    
-    #for k, v in args.eval_datasets['eval'].items():
         
     return args
 
@@ -38,6 +30,7 @@ args.cometName = 'spur'
 args.use_comet = False
 args.model = 'scnn'
 args.load_pretrained = True
+args.pretrained_model_type = "nobs"
 args.pretrained_path = 'models/scnn_0.625_cmnist_baseline.pth'
 args.frozen_features = False
 args.save_model = True
