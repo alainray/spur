@@ -37,7 +37,7 @@ args.cometWs = 'alainray'
 args.cometName = 'spur'
 args.use_comet = False
 args.model = 'scnn'
-args.load_pretrained = False
+args.load_pretrained = True
 args.pretrained_path = 'models/scnn_0.625_cmnist_baseline.pth'
 args.frozen_features = False
 args.save_model = True
@@ -51,7 +51,7 @@ task_args.duplicate = False             # Do we add a different color copy of tr
 
 task_args.n_interventions = 0
 task_args.total_iterations = 5
-task_args.dataset = {'name': 'synmnist', 'p': 0.95 , 'bg': 'nobg', 'splits': ['train','val','test'], 'baseline': False, 'bs': 16000}
+task_args.dataset = {'name': 'synmnist', 'p': 0.95 , 'bg': 'nobg', 'splits': ['train','val','test'], 'baseline': True, 'bs': 16000}
 task_args.mode = ["task"
                    #, 'play'
                   # ,'forget'

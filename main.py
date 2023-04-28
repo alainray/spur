@@ -24,6 +24,7 @@ def main(dls):
     
     if args.frozen_features:
         model = freeze_model(args, model).cuda()
+        model = restart_model(args, model)
 
     opt = Adam(model.parameters(), lr=0.001)
     opt_play  = Adam(model.parameters(), lr=0.001)
@@ -91,11 +92,14 @@ for seed in seeds:
             
             #args.spurious_probability = spur
             if args.load_pretrained:
-                args.pretrained_path = f'models/scnn_synmnist_{spur}_{env}_nobs_cmnist_baseline.pth'
+                args.pretrained_path = f'models/scnn_synmnist_{spur}_{env}_{args.pretrained_model_type}_cmnist_baseline.pth'
             args.seed = seed
             
-            #args.task_args.dataset['p'] = spur
+            if not args.frozen_features:
+                args.task_args.dataset['p'] = spur
+            
             args.task_args.dataset['bg'] = env
+            
             args.eval_datasets['task'] = task_args.dataset
             
             
