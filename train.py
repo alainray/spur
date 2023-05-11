@@ -1,17 +1,32 @@
 import torch.nn as nn 
 import torch
 from utils import AverageMeter, pretty_print
+from torch.nn.utils import vector_to_parameters, parameters_to_vector
+from os import mkdir
+import os
 
+def get_grads(model):
+    grads = dict()
+    for name, param in model.named_parameters():
+        if param.grad is not None:
+            grads[name] = param.grad.cpu()
+    return grads
+
+def add_grads(grad, new_grad):
+    for n, g in grad.items():
+        grad[n] += g
+    
+    return grad
 
 #@timing
-def train(model, dl, opt, args, caption=''):
-    
+def train(model, dl, opt, args, caption='', return_grads=False):
     mode = 'play' if 'play' in caption else 'task'
     loss_meter = AverageMeter()
     acc_meter = AverageMeter()
     total_batches = len(dl)
-    metrics = {}#'loss': None, 'acc': None}
+    metrics = {'grads': None}#'loss': None, 'acc': None}
     model.train()
+    grads_list = []
     
     def mean_nll(logits, y):
         return nn.functional.binary_cross_entropy_with_logits(logits, y)
@@ -19,9 +34,9 @@ def train(model, dl, opt, args, caption=''):
     def mean_accuracy(logits, y):
         preds = (logits.squeeze() > 0.).float()
         return  ((preds - y).abs() < 1e-2).float().mean()
-
+    
     for n_batch, (x, y) in enumerate(dl):
-
+        
         x = x.cuda()
         y = y.cuda()
         bs = x.shape[0]
@@ -40,16 +55,24 @@ def train(model, dl, opt, args, caption=''):
         # Backpropagation Update
         opt.zero_grad()
         loss.backward()
+        if return_grads: # Store gradients       
+            new_grads = get_grads(model)
+            grads_list.append((args[f'{mode}_iter'], new_grads ))
+           # grads = add_grads(grads, new_grads) if grads is not None else new_grads
         opt.step()
         # Report results
         # print(f'[{caption.upper():11s}] [{(n_batch+1)*bs:05d}/{total_batches*bs}] {args.cur_iter:03d} Loss: {loss:.3f} Acc: {100*acc:.2f}%')
         #args.exp.log_metrics(metrics, prefix=caption, step=args[f'{mode}_iter'], epoch=args[f'{mode}_iter'])
         # Exit training if we know there's an intervention coming!
+        metrics['grads'] = grads_list
+      
         if args.max_cur_iter == args[f'{mode}_iter']:
+           
             args[f'{mode}_iter'] +=1
             return model, args, metrics
         args[f'{mode}_iter'] +=1
-    return model, args , metrics
+
+    return model, args, metrics
 
 #@timing
 '''

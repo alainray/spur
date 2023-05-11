@@ -102,12 +102,13 @@ def setup_comet(args, resume_experiment_key=''):
     return experiment
 
 def create_schedule(args):
-    step_size = args.total_iterations//(args.n_interventions+1)
-    schedule = [i*step_size for i in range(1,args.n_interventions+1)] 
+    step_size = args.total_iterations//args.n_interventions
+    schedule = [(i+1)*step_size for i in range(args.n_interventions)] 
 
     if args.total_iterations not in schedule:
         schedule += [args.total_iterations]
     return schedule
+
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -127,6 +128,10 @@ class AverageMeter(object):
         self.count += n
         self.avg = self.sum / self.count
 
+def save_grads(args, grads):
+    path = f"{args.save_grads_folder}/grads_{args.model}_{args.task_dataset_name}_{args.task_dataset_bg}_{args.task_dataset_p}.pth"
+    torch.save(grads, path)
+
 def get_prefix(args):
     return "_".join([str(w) for k,w in vars(args).items() if "comet" not in k])
 
@@ -137,7 +142,8 @@ def make_dataset_id(ds_dict):
 def save_model(args, model, modifier=""):
 
     model_id = make_dataset_id(args.task_args.dataset)
-    path = f'{args.save_model_folder}/{args.model}_{model_id}_{args.save_model_path}'
+    frozen = "frz" if args.frozen_features else 'nofrz'
+    path = f'{args.save_model_folder}/{args.model}_{model_id}_{frozen}_{args.save_model_path}'
     torch.save(model.state_dict(), path)
 
 def load_model(model, weights_path):
@@ -148,8 +154,18 @@ def load_model(model, weights_path):
 def freeze_model(args, model): # Freeze all layers except classifier
     # Freeze all the layers in the features module
     if args.model == 'scnn':
-        for param in model.features.parameters():
-            param.requires_grad = False
+        layers = ['features.conv1.weight',
+                  'features.conv1.bias',
+                  'features.conv2.weight',
+                  'features.conv2.bias',
+                  'features.conv3.weight',
+                  'features.conv3.bias',
+                  'fc.0.weight',
+                  'fc.0.bias']
+        layers = layers[:2*args.n_freeze_layers]
+        for n, param in model.features.named_parameters():
+            if n in layers:
+                param.requires_grad = False
 
         # Make sure the parameters in the classifier module are trainable
         for param in model.fc.parameters():
