@@ -82,6 +82,7 @@ def main(dls):
     args.play_iter = 1
     grads = []
     n_session = 0
+    last_session_iterations = 0
     for i, iters in enumerate(training_schedule):
         args.max_cur_iter = iters
         dl = dls['task']['train']
@@ -90,6 +91,7 @@ def main(dls):
         while args.task_iter < args.max_cur_iter:
             model, args, train_metrics = train(model, dl, opt, args,'task',args.save_grads)
             # Evaluate on all environments/splits!
+            #save_model(args, model)
             grads += train_metrics['grads']
             evaluate_splits(model, dls['eval'], args, "task")
         
@@ -97,7 +99,12 @@ def main(dls):
             # Forget last layers before proceeding
             # Get mask
             print(f"Currently Forgetting using method: {args.forget_method.upper()} - %: {100*args.forget_threshold} - Criteria: {args.forget_criteria.upper()}_{args.forget_asc}")
-            avg_grads, std_grads = average_grads(grads)
+            print(f"Iters delta: {iters-last_session_iterations}")
+
+
+            #print(len(grads),len(grads[:-last_session_iterations]))
+            avg_grads, std_grads = average_grads(grads[-(iters-last_session_iterations):])
+            last_session_iterations = iters
             if args.forget_method == 'random':
                 input_for_mask = model
             elif args.forget_criteria == 'gradients':
