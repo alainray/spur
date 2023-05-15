@@ -139,22 +139,23 @@ if __name__ == '__main__':
     # Set up argument parser
     parser = argparse.ArgumentParser(description='Description of your program')
     parser.add_argument('--seed', type=int, help='Seed value', required=True)
-    parser.add_argument('--method', type=str, help='Forget Method', required=True)
-    parser.add_argument('--forget_crit', type=str, help='Forget Criteria', required=True)
-    parser.add_argument('--spur', type=float, help='Spurious Probability', required=True)
-    parser.add_argument('--forget_asc', type=int, help='Value of forget_asc', required=True)
-    parser.add_argument('--forget_t', type=float, help='Value of forget_t', required=True)
-    parser.add_argument('--env', type=str, help='Environment variable', required=True)
+    parser.add_argument('--forget_method', type=str, help='Forget Method', required=False, default="xxx")
+    parser.add_argument('--forget_criteria', type=str, help='Forget Criteria', required=False, default="xxx")
+    parser.add_argument('--n_interventions', type=float, help='Number of interventions', required=False, default=1)
+    parser.add_argument('--spur', type=float, help='Spurious Probability', required=False, default=0.5)
+    parser.add_argument('--forget_asc', type=int, help='Value of forget_asc', required=False, default=0)
+    parser.add_argument('--forget_threshold', type=float, help='Value of forget_t', required=False,default=0)
+    parser.add_argument('--env', type=str, help='Environment variable', required=False, default='nobg')
 
     # Parse command-line arguments
     input_args = parser.parse_args()
 
     # Access parsed arguments
-    args.forget_method = input_args.method
-    seed = input_args.seed
-    args.forget_criteria = input_args.forget_crit
-    args.forget_asc = bool(input_args.forget_asc)
-    args.forget_threshold = input_args.forget_t
+    for arg in vars(input_args):
+        args[arg] = getattr(input_args, arg)
+        
+    args.forget_asc = bool(args.forget_asc)
+    
     env = input_args.env
     spur = input_args.spur
 
@@ -162,7 +163,6 @@ if __name__ == '__main__':
 
     if args.load_pretrained:
         args.pretrained_path = f'models/scnn_synmnist_{spur}_{env}_{args.pretrained_model_type}_cmnist_baseline.pth'
-    args.seed = seed
 
     if not args.frozen_features:
         args.task_args.dataset['p'] = spur
