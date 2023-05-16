@@ -141,7 +141,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, help='Seed value', required=True)
     parser.add_argument('--forget_method', type=str, help='Forget Method', required=False, default="xxx")
     parser.add_argument('--forget_criteria', type=str, help='Forget Criteria', required=False, default="xxx")
-    parser.add_argument('--n_interventions', type=float, help='Number of interventions', required=False, default=1)
+    parser.add_argument('--n_interventions', type=int, help='Number of interventions', required=False, default=1)
     parser.add_argument('--spur', type=float, help='Spurious Probability', required=False, default=0.5)
     parser.add_argument('--forget_asc', type=int, help='Value of forget_asc', required=False, default=0)
     parser.add_argument('--forget_threshold', type=float, help='Value of forget_t', required=False,default=0)
