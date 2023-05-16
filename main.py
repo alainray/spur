@@ -155,7 +155,7 @@ if __name__ == '__main__':
         args[arg] = getattr(input_args, arg)
         
     args.forget_asc = bool(args.forget_asc)
-    
+    task_args.n_interventions = args.n_interventions
     env = input_args.env
     spur = input_args.spur
 
