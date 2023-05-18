@@ -4,12 +4,26 @@ from utils import AverageMeter, pretty_print
 from torch.nn.utils import vector_to_parameters, parameters_to_vector
 from os import mkdir
 import os
+from torch.optim import SGD
 
 def get_grads(model):
     grads = dict()
     for name, param in model.named_parameters():
         if param.grad is not None:
             grads[name] = param.grad.cpu()
+    return grads
+
+def get_gradients_from_data(model, x, y):
+    def mean_nll(logits, y):
+        return nn.functional.binary_cross_entropy_with_logits(logits, y)
+    opt = SGD(model.parameters(), lr=0.001)
+
+    logits = model(x) # With Correlation
+    loss = mean_nll(logits.squeeze(), y)
+    opt.zero_grad()
+    loss.backward()
+    grads = get_grads(model)
+    opt.zero_grad()
     return grads
 
 def add_grads(grad, new_grad):
