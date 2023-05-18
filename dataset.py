@@ -1,6 +1,10 @@
 import datasets.synbols as synbols
-from collections import defaultdict
 from params import args
+import torchvision
+from torchvision.transforms import Resize
+import torch
+from train import get_grads
+
 # Generic dataset
 
 # Dataset options: 
@@ -9,6 +13,23 @@ dataset_function = {
     'cmnist': None,
     'synmnist': synbols.get_splits
 }
+
+def get_spurious_samples():
+    train_dataset = torchvision.datasets.MNIST(root='../datasets', train=True, transform=None, download=True)
+    resize = Resize((32,32))
+    x = resize(train_dataset.data)
+    y = train_dataset.targets
+    sorted_indices = torch.argsort(y)
+    # sort x using the sorted indices
+    sorted_x = x[sorted_indices].float().unsqueeze(1).cuda()
+    sorted_y = y[sorted_indices].float().cuda()
+
+    z = torch.zeros_like(sorted_x)
+    r_imgs = torch.cat([sorted_x,z,z], dim=1).cuda()
+    g_imgs = torch.cat([z,sorted_x,z], dim=1).cuda()
+    return r_imgs, g_imgs, sorted_y
+
+
 
 def make_dataloaders(args): # entrega un dict con llaves los ambientes posibles ()
 
