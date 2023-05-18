@@ -1,11 +1,11 @@
 import comet_ml
 import torch
 import argparse
-from dataset import make_dataloaders
+from dataset import make_dataloaders, get_spurious_samples
 from params import *                        # Experiment parameters 
 from models import create_model, restart_model
 from torch.optim import SGD, Adam
-from train import train, evaluate_splits
+from train import train, evaluate_splits, get_gradients_from_data
 from utils import *
 from time import time
 from masks import generate_mask, forget_model
@@ -111,8 +111,18 @@ def main(dls):
                 input_for_mask = avg_grads
             elif args.forget_criteria == 'stds':
                 input_for_mask = std_grads
+            elif args.forget_method == 'spur_grads':
+                # Get gradients for spurious
+                print("Getting Spurious and Non Spurious gradients!")
+                spur_data, non_spur_data, y = get_spurious_samples()
+                spur_grads_red = get_gradients_from_data(model, spur_data[:30000], y[:30000])
+                non_spur_grads_red = get_gradients_from_data(model, non_spur_data[:30000], y[:30000])
+                spur_grads_green = get_gradients_from_data(model, spur_data[30000:], y[30000:])
+                non_spur_grads_greem = get_gradients_from_data(model, non_spur_data[30000:], y[30000:])
+                input_for_mask = [spur_grads_red, non_spur_grads_red,spur_grads_green, non_spur_grads_greem]
             
             forget_mask = generate_mask(input_for_mask, method=args.forget_method, t=args.forget_threshold, asc=args.forget_asc)
+            print()
             model = forget_model(model, forget_mask)
             #model = restart_model(args, model)
 

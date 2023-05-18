@@ -7,6 +7,12 @@ args = []
 
 # These were all generated using ChatGPT 3.5
 
+def add_masks(m1, m2):
+    result = dict()
+    for n, v in m1.items():
+        result[n] = m1[n] + m2[n]
+    return result
+
 
 def generate_mask(weights, method='absolute', t=0.5, asc=True):
     """
@@ -30,6 +36,10 @@ def generate_mask(weights, method='absolute', t=0.5, asc=True):
         mask = generate_mask_percentile_full(weights, t, asc = asc)
     elif method == 'partial':
         mask = generate_mask_percentile_partial(weights, t, asc = asc)
+    elif method == 'spur_grads':
+        mask_r = generate_sign_mask(weights[0], weights[1], equal=False)
+        mask_g = generate_sign_mask(weights[2], weights[3], equal=False)
+        mask = add_masks(mask_r, mask_g)
     else:
         raise ValueError(f"Invalid pruning method: {method}")
     return mask
@@ -94,16 +104,12 @@ def generate_mask_percentile_full(tensors_dict, threshold_ratio, asc = True):
     # Compute the threshold value for the specified percentile
     if asc:
         threshold = torch.kthvalue(abs_tensor, int((threshold_ratio) * abs_tensor.numel()))[0]
-        mask_tensor[abs_tensor < threshold] = 1
+        mask_tensor[abs_tensor <= threshold] = 1
     
     else:
         threshold = torch.kthvalue(abs_tensor, int((1 - threshold_ratio) * abs_tensor.numel()))[0]
-        mask_tensor[abs_tensor > threshold] = 1
+        mask_tensor[abs_tensor >= threshold] = 1
     
-
-    # Create the mask tensor based on the threshold value
-
-    mask_tensor[abs_tensor > threshold] = 1
     
     # Split the mask tensor back into a dictionary of tensors with the same shapes as the input tensors
     mask_dict = {}
@@ -139,20 +145,29 @@ def generate_mask_percentile_partial(tensors_dict, threshold_ratio, asc = True):
         mask_tensor = torch.zeros_like(tensor)
         # Compute the threshold value for the specified percentile
         if asc:
-            k = min(int((threshold_ratio) * abs_tensor.numel()),1)
+            k = max(int((threshold_ratio) * abs_tensor.numel()),1)
             if abs_tensor.view(-1).shape[0]>1 and k > 0:
                 threshold = torch.kthvalue(abs_tensor.view(-1), k)[0]
-                mask_tensor[abs_tensor < threshold] = 1
+                mask_tensor[abs_tensor <= threshold] = 1
         else:
-            k = min(int((threshold_ratio) * abs_tensor.numel()),1)
+            k = max(int((1-threshold_ratio) * abs_tensor.numel()),1)
             if abs_tensor.view(-1).shape[0]>1 and k > 0 :
                 threshold = torch.kthvalue(abs_tensor.view(-1), k)[0]
-                mask_tensor[abs_tensor > threshold] = 1
-
+                mask_tensor[abs_tensor >= threshold] = 1
         # Add the mask tensor to the dictionary of mask tensors
         mask_dict[name] = mask_tensor.bool()
 
     return mask_dict
+
+def generate_sign_mask(g1, g2, equal=True):
+    mask = {}
+    for key in g1.keys():
+        if equal:
+            mask[key] = (torch.sign(g1[key]) == torch.sign(g2[key])).bool()
+        else:
+            mask[key] = (torch.sign(g1[key]) != torch.sign(g2[key])).bool()
+        
+    return mask
 
 
 # def forget_model(model, mask):
@@ -196,10 +211,16 @@ def forget_model(model, mask):
 
     reinit_model =  copy.deepcopy(model)
     reinit_model = init_weights(reinit_model)
-
+    total = 0
+    masked = 0
     for (name, param), (_, r_param) in zip(model.named_parameters(), reinit_model.named_parameters()):
+
         if name in mask:
             param.data[mask[name]] = 0 
             r_param.data[~mask[name]] = 0
             param.data += r_param.data
+            total += param.numel()
+            masked += mask[name].float().sum()
+
+    print(f"Forgetting: {100*masked/total:.2f}% of weights")
     return model
