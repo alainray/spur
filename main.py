@@ -98,7 +98,7 @@ def main(dls):
             grads += train_metrics['grads']
             evaluate_splits(model, dls['eval'], args, "task")
         
-        if 'forget' in task_args.mode and args.task_iter <= task_args.total_iterations:
+        if 'forget' in task_args.mode and args.task_iter <= training_schedule[-1]:
             # Forget last layers before proceeding
             # Get mask
             print(f"Currently Forgetting using method: {args.forget_method.upper()} - %: {100*args.forget_threshold} - Criteria: {args.forget_criteria.upper()}_{args.forget_asc}")
@@ -130,7 +130,7 @@ def main(dls):
             model = forget_model(model, forget_mask)
             #model = restart_model(args, model)
 
-        if 'play' in task_args.mode and args.task_iter <= task_args.total_iterations:
+        if 'play' in task_args.mode and args.task_iter <= training_schedule[-1]:
             args.max_cur_iter = play_args.total_iterations
             # Replace classifier for play task
             #model = replaceModelClassifier(model, n_tasks)
