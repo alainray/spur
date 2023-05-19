@@ -110,6 +110,7 @@ def main(dls):
             last_session_iterations = iters
             if args.forget_method == 'random':
                 input_for_mask = model
+            elif args.forget_method == 'spur_grads':
                 # Get gradients for spurious
                 print("Getting Spurious and Non Spurious gradients!")
                 spur_data, non_spur_data, y = get_spurious_samples()
