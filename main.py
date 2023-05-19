@@ -110,11 +110,6 @@ def main(dls):
             last_session_iterations = iters
             if args.forget_method == 'random':
                 input_for_mask = model
-            elif args.forget_criteria == 'gradients':
-                input_for_mask = avg_grads
-            elif args.forget_criteria == 'stds':
-                input_for_mask = std_grads
-            elif args.forget_method == 'spur_grads':
                 # Get gradients for spurious
                 print("Getting Spurious and Non Spurious gradients!")
                 spur_data, non_spur_data, y = get_spurious_samples()
@@ -124,6 +119,11 @@ def main(dls):
                 non_spur_grads_greem = get_gradients_from_data(model, non_spur_data[30000:], y[30000:])
                 input_for_mask = [spur_grads_red, non_spur_grads_red,spur_grads_green, non_spur_grads_greem]
             
+            elif args.forget_criteria == 'gradients':
+                input_for_mask = avg_grads
+            elif args.forget_criteria == 'stds':
+                input_for_mask = std_grads
+
             forget_mask = generate_mask(input_for_mask, method=args.forget_method, t=args.forget_threshold, asc=args.forget_asc)
             print()
             model = forget_model(model, forget_mask)
