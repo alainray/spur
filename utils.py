@@ -143,7 +143,7 @@ def save_model(args, model, modifier=""):
 
     model_id = make_dataset_id(args.task_args.dataset)
     frozen = "frz" if args.frozen_features else 'nofrz'
-    path = f'{args.save_model_folder}/{args.model}_{model_id}_{frozen}_{args.save_model_path}'
+    path = f'{args.save_model_folder}/{args.model}_{model_id}_{frozen}_{args.task_iter}_{args.save_model_path}'
     torch.save(model.state_dict(), path)
 
 def load_model(model, weights_path):
