@@ -46,6 +46,9 @@ def main(dls):
     set_random_state(args)
     # Define when to stop training and when to intervene.
     training_schedule = create_schedule(task_args)
+
+    if args.after_training:
+        training_schedule.append(training_schedule[-1]+args.task_total_iterations)
     print(f'Current training schedule is: {training_schedule}. {len(training_schedule)-1} intervention(s) total.')
 
     # Create model/optimizers

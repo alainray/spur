@@ -37,6 +37,7 @@ args.save_model = False
 args.save_model_folder = 'models'
 args.save_grads = True
 args.save_grads_folder = 'grads'
+args.after_training = False
 args.save_model_path = "cmnist_baseline.pth"
 args.dataset_paths = {'synmnist': "SynMNIST"}
 args.hidden_dim = 100
@@ -49,14 +50,14 @@ args.n_freeze_layers = 1
 args.n_layers = 1                       # Number of layers to forget
 task_args.duplicate = False             # Do we add a different color copy of training image to dataset?
 
-task_args.n_interventions = 10
+task_args.n_interventions = 1
 task_args.total_iterations = 100
-task_args.dataset = {'name': 'synmnist', 'p': 0.5 , 'bg': 'nobg', 'splits': ['train','val','test'], 'baseline': False, 'bs': 16000}
+task_args.dataset = {'name': 'synmnist', 'p': 0.875 , 'bg': 'nobg', 'splits': ['train','val','test'], 'baseline': False, 'bs': 16000}
 task_args.mode = ["task"
                    #, 'play'
-                   ,'forget'
+               ,'forget'
                    ]
-play_args.n_interventions = 0
+play_args.n_interventions = 1
 play_args.total_iterations = 200
 play_args.dataset = {'name': 'synmnist', 'p': 0.95 , 'bg': 'nobg', 'splits': ['train','val'], 'baseline': False, 'bs': 10000}
 
