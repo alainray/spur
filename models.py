@@ -3,13 +3,24 @@ from params import args
 from easydict import EasyDict  as edict
 import torch
 import torch.nn as nn
+from torchvision.models import densenet121
 
 def create_model(args):
     archs = edict()
     archs.resnet18 = resnet18
     archs.scnn = simplecnn
     archs.mlp = MLP
+    archs.densenet = densenet
     return archs[args.model](args)
+
+def densenet(args, in_channels=3, n_classes=1):
+    model = densenet121(weights=None)
+
+    num_ftrs = model.classifier.in_features
+    # Modify the first layer to accept input of shape (1, 96, 96)
+    model.features[0] = torch.nn.Conv2d(in_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
+    model.classifier = torch.nn.Linear(num_ftrs, n_classes)
+    return model
 
 class BasicBlock(nn.Module):
     """Basic Block for resnet 18 and resnet 34
@@ -227,7 +238,7 @@ def restart_model(args, model):
             #if m.bias is not None:
             #    nn.init.kaiming_normal_(m.bias)
 
-    if args.model == "simplecnn":
+    if args.model == "scnn":
         layers = ["features.conv1", "features.conv2", "features.conv3","fc"]
         
     elif args.model == "mlp":
@@ -249,14 +260,22 @@ def restart_model(args, model):
 if __name__ == '__main__':
     #from params import args
     N = 2
-    x = torch.rand(10,3,32,32)
+    x = torch.rand(10,1,96,96)
     #args = edict()
-    args.model = "mlp"
+    args.model = "densenet121"
     args.n_layers = 2     
     #model = MLP(args)
     #model.fc = nn.Identity()
+    model = densenet121()
 
-    model = SimpleCNN([32,64,128],1,add_pooling=False)
+    num_ftrs = model.classifier.in_features
+    # Modify the first layer to accept input of shape (1, 96, 96)
+    model.features[0] = torch.nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
+    print(num_ftrs)
+    model.classifier = torch.nn.Linear(num_ftrs, 1)
+
+    print(model(x).shape)
+    #model = SimpleCNN([32,64,128],1,add_pooling=False)
     #print(model.features.fc1.weight[0][0])
     #print(model.conv5_x[1].residual_function[0].weight[0][0][0])
     #print(model.features.fc.weight[0][0])

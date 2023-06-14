@@ -28,18 +28,18 @@ args.cometKey = 'w4JbvdIWlas52xdwict9MwmyH'
 args.cometWs = 'alainray'
 args.cometName = 'spur'
 args.use_comet = False
-args.model = 'scnn'
+args.model = 'densenet'
 args.load_pretrained = False
 args.pretrained_model_type = "nobs"
 args.pretrained_path = 'models/scnn_0.625_cmnist_baseline.pth'
 args.frozen_features = False
-args.save_model = False
+args.save_model = True
 args.save_model_folder = 'models'
-args.save_grads = True
+args.save_grads = False
 args.save_grads_folder = 'grads'
 args.after_training = False
-args.save_model_path = "cmnist_baseline.pth"
-args.dataset_paths = {'synmnist': "SynMNIST"}
+args.save_model_path = ".pth"
+args.dataset_paths = {'synmnist': "SynMNIST", "camelyon": "../datasets"}
 args.hidden_dim = 100
 args.max_cur_iter = 0
 args.forget_method = 'random' # random/absolute/mag_full/mag_partial
@@ -50,12 +50,13 @@ args.n_freeze_layers = 1
 args.n_layers = 1                       # Number of layers to forget
 task_args.duplicate = False             # Do we add a different color copy of training image to dataset?
 
-task_args.n_interventions = 1
-task_args.total_iterations = 100
-task_args.dataset = {'name': 'synmnist', 'p': 0.875 , 'bg': 'nobg', 'splits': ['train','val','test'], 'baseline': False, 'bs': 16000}
+task_args.n_interventions = 50
+task_args.total_iterations = 500 # 9452 = 1 epoch
+task_args.dataset = {'name': 'camelyon', 'splits': ['train','val','test'], 'bs': 32}
+#task_args.dataset = {'name': 'synmnist', 'p': 0.875 , 'bg': 'nobg', 'splits': ['train','val'], 'baseline': False, 'bs': 16000}
 task_args.mode = ["task"
                    #, 'play'
-               ,'forget'
+               #,'forget'
                    ]
 play_args.n_interventions = 1
 play_args.total_iterations = 200

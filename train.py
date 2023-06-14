@@ -23,7 +23,7 @@ def get_gradients_from_data(model, x, y):
     opt.zero_grad()
     loss.backward()
     grads = get_grads(model)
-    opt.zero_grad()
+    #opt.zero_grad()
     return grads
 
 def add_grads(grad, new_grad):
@@ -75,7 +75,8 @@ def train(model, dl, opt, args, caption='', return_grads=False):
            # grads = add_grads(grads, new_grads) if grads is not None else new_grads
         opt.step()
         # Report results
-        # print(f'[{caption.upper():11s}] [{(n_batch+1)*bs:05d}/{total_batches*bs}] {args.cur_iter:03d} Loss: {loss:.3f} Acc: {100*acc:.2f}%')
+        if n_batch % 20 == 0:
+            print(f'\r[{caption.upper():11s}] [{(n_batch+1)*bs:05d}/{total_batches*bs}] {args[f"{mode}_iter"]:03d} Loss: {loss:.3f} Acc: {100*acc:.2f}%', end="")
         #args.exp.log_metrics(metrics, prefix=caption, step=args[f'{mode}_iter'], epoch=args[f'{mode}_iter'])
         # Exit training if we know there's an intervention coming!
         metrics['grads'] = grads_list
@@ -146,7 +147,9 @@ def evaluate(model, dl, caption='train'):
             acc = mean_accuracy(logits, y)
             cur_loss = loss.detach().cpu()
             loss_meter.update(cur_loss, bs)
-            acc_meter.update(acc, bs) 
+            acc_meter.update(acc, bs)
+        print(f'\r[{caption.upper():11s}] [{(n_batch+1)*bs:05d}/] Loss: {loss_meter.avg:.3f} Acc: {100*acc_meter.avg:.2f}%', end="")
+        
 
     # Report results
     metrics[f'{caption}_loss'] = float(loss_meter.avg)
