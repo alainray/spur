@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from models import simplecnn
 import copy
-args = []
+from models import create_model
 
 
 # These were all generated using ChatGPT 3.5
@@ -37,8 +37,8 @@ def generate_mask(weights, method='absolute', t=0.5, asc=True):
     elif method == 'partial':
         mask = generate_mask_percentile_partial(weights, t, asc = asc)
     elif method == 'spur_grads':
-        mask_r = generate_sign_mask(weights[0], weights[1], equal=False)
-        mask_g = generate_sign_mask(weights[2], weights[3], equal=False)
+        mask_r = generate_sign_mask(weights[0], weights[1], equal=asc)
+        mask_g = generate_sign_mask(weights[2], weights[3], equal=asc)
         mask = add_masks(mask_r, mask_g)
     else:
         raise ValueError(f"Invalid pruning method: {method}")
@@ -196,7 +196,7 @@ def init_weights(model):
 
     return model
 
-def forget_model(model, mask):
+def forget_model(args, model, mask, forget_method='reinitialize'):
     """
     Reinitialize the masked weights in a PyTorch model with random values drawn from a normal distribution.
     
@@ -209,16 +209,20 @@ def forget_model(model, mask):
         torch.nn.Module: The pruned PyTorch model with reinitialized weights.
     """
 
-    reinit_model =  copy.deepcopy(model)
+    reinit_model = create_model(args)
     reinit_model = init_weights(reinit_model)
     total = 0
     masked = 0
     for (name, param), (_, r_param) in zip(model.named_parameters(), reinit_model.named_parameters()):
 
         if name in mask:
+
             param.data[mask[name]] = 0 
-            r_param.data[~mask[name]] = 0
-            param.data += r_param.data
+            
+            if forget_method=='reinitialize':
+                r_param.data[~mask[name]] = 0
+                param.data += r_param.data
+            
             total += param.numel()
             masked += mask[name].float().sum()
 
