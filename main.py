@@ -94,7 +94,8 @@ def main(dls):
         while args.task_iter < args.max_cur_iter:
             model, args, train_metrics = train(model, dl, opt, args,'task',args.save_grads)
             # Evaluate on all environments/splits!
-            save_model(args, model)
+            if args.save_model:
+                save_model(args, model)
             grads += train_metrics['grads']
             evaluate_splits(model, dls['eval'], args, "task")
         
