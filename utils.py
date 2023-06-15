@@ -11,7 +11,7 @@ import random
 def pretty_print(m, args, mode):
     
     line = f"{args[f'{mode}_iter']-1:04d} |"
-    min_split = {'train': "tr", "test": 'ts', 'val': 'vl'}
+    min_split = {'train': "tr", "test": 'ts', 'val': 'vl','id': 'ivl'}
     for ds_name, metrics in m.items():
 
         line+= f"<{ds_name.upper()}>=[LOSS] "
@@ -19,14 +19,14 @@ def pretty_print(m, args, mode):
         for k, v in metrics.items():
     
             split = k.split('_')[0]
-            metric = k.split('_')[1]
+            metric = k.split('_')[-1]
             if metric == 'loss':
                 line += f"{min_split[split]}: {v:.3f} "
         line += "- [ACC] "
     
         for k, v in metrics.items():
             split = k.split('_')[0]
-            metric = k.split('_')[1]
+            metric = k.split('_')[-1]
             if metric == 'acc':
                 line += f"{min_split[split]}: {v:.1f} "
         line += '|'

@@ -78,7 +78,7 @@ def main(dls):
     #    show_data(dls, envs, splits)
 
     # Evaluation before training
-    #evaluate_splits(model, dls['eval'], args, "task")
+    evaluate_splits(model, dls['eval'], args, "task")
 
     # Training starts
     args.task_iter = 1
@@ -183,7 +183,7 @@ if __name__ == '__main__':
 
     args.task_args.dataset['bg'] = env
 
-    args.eval_datasets['task'] = task_args.dataset
+    #args.eval_datasets['task'] = task_args.dataset
 
 
     args = update_args(args)

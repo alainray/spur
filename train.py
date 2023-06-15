@@ -113,7 +113,7 @@ def evaluate_splits(model, dls, args, stage):
             for k, v in metrics.items():
                 results[k] = v
         all_results[ds_name] = results
-
+    print(all_results)
     #print(results)
     pretty_print(all_results,args,stage)
     for ds_name, results in all_results.items():
