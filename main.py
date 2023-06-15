@@ -61,7 +61,7 @@ def main(dls):
         model = freeze_model(args, model).cuda()
         model = restart_model(args, model)
 
-    opt = Adam(model.parameters(), lr=0.001)
+    opt = SGD(model.parameters(), lr=0.001,momentum=0.9,weight_decay=0.01)
     opt_play  = Adam(model.parameters(), lr=0.001)
 
     # Comet.ml logging
@@ -94,7 +94,7 @@ def main(dls):
         while args.task_iter < args.max_cur_iter:
             model, args, train_metrics = train(model, dl, opt, args,'task',args.save_grads)
             # Evaluate on all environments/splits!
-            #save_model(args, model)
+            save_model(args, model)
             grads += train_metrics['grads']
             evaluate_splits(model, dls['eval'], args, "task")
         
