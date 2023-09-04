@@ -61,7 +61,7 @@ def main(dls):
         model = freeze_model(args, model).cuda()
         model = restart_model(args, model)
 
-    opt = SGD(model.parameters(), lr=0.001,momentum=0.9,weight_decay=0.01)
+    opt = Adam(model.parameters(), lr=0.001)#),momentum=0.9,weight_decay=0.01)
     opt_play  = Adam(model.parameters(), lr=0.001)
 
     # Comet.ml logging
@@ -86,6 +86,8 @@ def main(dls):
     grads = []
     n_session = 0
     last_session_iterations = 0
+    min_val_loss = 100000.0
+    best_model = None
     for i, iters in enumerate(training_schedule):
         args.max_cur_iter = iters
         dl = dls['task']['train']
@@ -94,11 +96,20 @@ def main(dls):
         while args.task_iter < args.max_cur_iter:
             model, args, train_metrics = train(model, dl, opt, args,'task',args.save_grads)
             # Evaluate on all environments/splits!
-            if args.save_model:
-                save_model(args, model)
+            #if args.save_model:
+            #    save_model(args, model)
             grads += train_metrics['grads']
-            evaluate_splits(model, dls['eval'], args, "task")
-        
+            metrics = evaluate_splits(model, dls['eval'], args, "task")
+            if args.save_best:
+                if metrics['task']['val_loss'] < min_val_loss:
+                    min_val_loss = metrics['task']['val_loss']
+                    print(f"New best model! Best val loss is now: {min_val_loss:.2f} and acc: {metrics['task']['val_acc']:.2f}")
+                    best_model = {'iter': args.task_iter, 
+                                  'loss': min_val_loss,
+                                  'acc': metrics['task']['val_acc'],
+                                  'model': model.state_dict()}
+            # best_model = model.clone()
+
         if 'forget' in task_args.mode and args.task_iter <= training_schedule[-1]:
             # Forget last layers before proceeding
             # Get mask
@@ -146,7 +157,7 @@ def main(dls):
     
     if args.save_grads:
         save_grads(args, grads)
-    return model
+    return model, best_model
 
 
 
@@ -181,7 +192,9 @@ if __name__ == '__main__':
 
     if not args.frozen_features:
         args.task_args.dataset['p'] = spur
-
+        args.task_args.dataset['corr'] = round(2*spur -1,2) 
+        args.eval_datasets['task'] = args.task_args.dataset 
+        args.eval_datasets['eval'].corr = 0.0#  round(2*spur -1,2) 
     args.task_args.dataset['bg'] = env
 
     #args.eval_datasets['task'] = task_args.dataset
@@ -192,8 +205,14 @@ if __name__ == '__main__':
     set_random_state(args)
     # reload datasets
     dls = make_dataloaders(args)
-    model = main(dls)
+    print("======================================")
+    print(f"Training on: {task_args.dataset}")
+    print(f"Evaluating on: {args.eval_datasets['eval']}")
+    print("======================================")
+    model, best_model = main(dls)
     #
+    if args.save_best:
+        save_best_model(args, best_model)
     if args.save_model:
         save_model(args, model, spur)
     end = time()

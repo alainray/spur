@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 from torchvision.models import densenet121
 
+
 def create_model(args):
     archs = edict()
     archs.resnet18 = resnet18
@@ -211,7 +212,7 @@ class SimpleCNN(nn.Module):
 
 
 def simplecnn(args,**kwargs):
-    return SimpleCNN([32,64,128],1,add_pooling=False)
+    return SimpleCNN([32,64,128],1,num_classes=args.output_dims, add_pooling=False)
 
 
 def restart_model(args, model):
@@ -260,22 +261,22 @@ def restart_model(args, model):
 if __name__ == '__main__':
     #from params import args
     N = 2
-    x = torch.rand(10,1,96,96)
+    x = torch.rand(10,3,64,32)
     #args = edict()
     args.model = "densenet121"
     args.n_layers = 2     
     #model = MLP(args)
     #model.fc = nn.Identity()
-    model = densenet121()
+    #model = densenet121()
 
-    num_ftrs = model.classifier.in_features
+    #num_ftrs = model.classifier.in_features
     # Modify the first layer to accept input of shape (1, 96, 96)
-    model.features[0] = torch.nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
-    print(num_ftrs)
-    model.classifier = torch.nn.Linear(num_ftrs, 1)
+    #model.features[0] = torch.nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
+    #print(num_ftrs)
+    #model.classifier = torch.nn.Linear(num_ftrs, 1)
 
-    print(model(x).shape)
-    #model = SimpleCNN([32,64,128],1,add_pooling=False)
+    #print(model(x).shape)
+    model = SimpleCNN([32,64,128],1,add_pooling=False)
     #print(model.features.fc1.weight[0][0])
     #print(model.conv5_x[1].residual_function[0].weight[0][0][0])
     #print(model.features.fc.weight[0][0])
@@ -286,4 +287,4 @@ if __name__ == '__main__':
     #for name, module in model.named_modules():
     #    print(name)#, module)
 
-    model(x).shape
+    print(model(x).shape)

@@ -5,6 +5,7 @@ from torchvision.transforms import Resize
 import torch
 from train import get_grads
 import datasets.camelyon as camelyon
+import datasets.mnistcifar as mc
 # Generic dataset
 
 # Dataset options: 
@@ -13,6 +14,7 @@ dataset_function = {
     'cmnist': None,
     'synmnist': synbols.get_splits,
     'camelyon': camelyon.get_splits,
+    'mnistcifar': mc.get_splits,
 }
 
 def get_spurious_samples():

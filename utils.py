@@ -138,6 +138,14 @@ def get_prefix(args):
 def make_dataset_id(ds_dict):
     if ds_dict['name'] == 'synmnist':
         return ds_dict['name'] + '_' + str(ds_dict['p']) + '_' + ds_dict['bg'] + '_' + ('bs' if ds_dict['baseline'] else 'nobs')
+    elif ds_dict['name'] == 'mnistcifar':
+        return ds_dict['name'] + "_" + str(ds_dict['corr']) + "_" + str(ds_dict['binarize'])
+
+def save_best_model(args, model_dict):
+
+    model_id = make_dataset_id(args.task_args.dataset)
+    path = f'{args.save_model_folder}/{args.model}_{model_id}_{args.seed}_best_{args.save_model_path}'
+    torch.save(model_dict, path)
 
 def save_model(args, model, modifier=""):
 

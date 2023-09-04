@@ -5,6 +5,23 @@ from torch.nn.utils import vector_to_parameters, parameters_to_vector
 from os import mkdir
 import os
 from torch.optim import SGD
+from sklearn.metrics import confusion_matrix
+
+
+
+def calculate_mean_accuracy(logits, targets): # For multiple output dimensions
+    _, predicted_labels = torch.max(logits, dim=1)
+    correct_predictions = (predicted_labels == targets).sum().item()
+    total_predictions = targets.size(0)
+    accuracy = correct_predictions / total_predictions
+    return accuracy
+
+def mean_nll(logits, y):
+    return nn.functional.binary_cross_entropy_with_logits(logits, y)
+
+def mean_accuracy(logits, y): # When using a single output dim
+    preds = (logits.squeeze() > 0.).float()
+    return  ((preds - y).abs() < 1e-2).float().mean()
 
 def get_grads(model):
     grads = dict()
@@ -41,24 +58,30 @@ def train(model, dl, opt, args, caption='', return_grads=False):
     metrics = {'grads': None}#'loss': None, 'acc': None}
     model.train()
     grads_list = []
-    
-    def mean_nll(logits, y):
-        return nn.functional.binary_cross_entropy_with_logits(logits, y)
-
-    def mean_accuracy(logits, y):
-        preds = (logits.squeeze() > 0.).float()
-        return  ((preds - y).abs() < 1e-2).float().mean()
+    loss_function = {True: nn.CrossEntropyLoss(), False: mean_nll }
+    acc_function = {True: calculate_mean_accuracy, False: mean_accuracy}
+    nonbinary = args.output_dims > 1
+    l_f = loss_function[nonbinary]
+    acc_f = acc_function[nonbinary]
     
     for n_batch, (x, y) in enumerate(dl):
         
         x = x.cuda()
-        y = y.cuda()
+        y = y.cuda() if nonbinary else y.float().cuda()
         bs = x.shape[0]
         logits = model(x)
         
         # Calculate metrics
-        loss = mean_nll(logits.squeeze(), y.float())
-        acc = mean_accuracy(logits, y)
+
+        # TODO: 0. For ARM, you have to choose group first and sample from it.
+        #       It also requires changing the architecture to support adaptation.
+        #       1. Group losses by group (group comes from dataset)
+        #       2. Add functions that recalculate loss given group losses:
+        #           This works for: Reweighting, Group DRO and IRM.
+        loss = l_f(logits.squeeze(), y)
+
+
+        acc = acc_f(logits, y)
         cur_loss = loss.detach().cpu()
         loss_meter.update(cur_loss, bs)
         acc_meter.update(acc, bs) 
@@ -109,47 +132,58 @@ def evaluate_splits(model, dls, args, stage):
         results = dict()
 
         for split, dl in ds.items(): 
-            metrics = evaluate(model, dl, split)
+            metrics = evaluate(args, model, dl, split)
             for k, v in metrics.items():
                 results[k] = v
         all_results[ds_name] = results
-    print(all_results)
+    #print(all_results)
     #print(results)
     pretty_print(all_results,args,stage)
     for ds_name, results in all_results.items():
         args.exp.log_metrics(results, prefix=ds_name, step=args[f'task_iter'], epoch=args[f'task_iter'])
-    return results
+    return all_results
 
 #@timing
-def evaluate(model, dl, caption='train'):
+def evaluate(args, model, dl, caption='train', show=True):
     loss_meter = AverageMeter()
     acc_meter = AverageMeter()
     metrics = {}
-    
+    all_predictions = []
+    all_labels = []
     model.eval()
     
-    def mean_nll(logits, y):
-        return nn.functional.binary_cross_entropy_with_logits(logits, y)
+    loss_function = {True: nn.CrossEntropyLoss(), False: mean_nll }
+    acc_function = {True: calculate_mean_accuracy, False: mean_accuracy}
+    nonbinary = args.output_dims > 1
+    l_f = loss_function[nonbinary]
 
-    def mean_accuracy(logits, y):
-        preds = (logits.squeeze() > 0.).float()
-        return  ((preds - y).abs() < 1e-2).float().mean()
-
+    acc_f = acc_function[nonbinary]
+    n_samples = len(dl.dataset)
     for n_batch, (x, y) in enumerate(dl):
         with torch.no_grad():
             x = x.cuda()
-            y = y.cuda()
+            y = y.cuda() if nonbinary else y.float().cuda()
             bs = x.shape[0]
             logits = model(x)
             
             # Calculate metrics
-            loss = mean_nll(logits.squeeze(), y.float())
-            acc = mean_accuracy(logits, y)
+            #print(logits.squeeze(), y)
+            loss = l_f(logits.squeeze(), y)
+            acc = acc_f(logits, y)
             cur_loss = loss.detach().cpu()
             loss_meter.update(cur_loss, bs)
             acc_meter.update(acc, bs)
-        print(f'\r[{caption.upper():11s}] [{(n_batch+1)*bs:05d}/] Loss: {loss_meter.avg:.3f} Acc: {100*acc_meter.avg:.2f}%', end="")
-        
+
+            # Accumulate predictions and labels
+            predictions = torch.argmax(logits, dim=1)
+            all_predictions.extend(predictions.cpu().numpy())
+            all_labels.extend(y.cpu().numpy())
+        if show:
+            print(f'\r[{caption.upper():11s}] [{(n_batch+1)*bs:05d}/{n_samples} ({100*((n_batch+1)*bs)/n_samples:.0f}%)] Loss: {loss_meter.avg:.3f} Acc: {100*acc_meter.avg:.2f}%', end="")
+        #if args.output_dims > 1:
+            # Calculate confusion matrix
+         #   confusion_mat = confusion_matrix(all_labels, all_predictions)
+         #   print(f"\nConfusion Matrix:\n{confusion_mat}")
 
     # Report results
     metrics[f'{caption}_loss'] = float(loss_meter.avg)
