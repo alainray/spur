@@ -209,6 +209,7 @@ if __name__ == '__main__':
     print("======================================")
     print(f"Training on: {task_args.dataset}")
     print(f"Evaluating on: {args.eval_datasets['eval']}")
+    print(f"Training method: {args.base_method.upper()}")
     print("======================================")
     model, best_model = main(dls)
     

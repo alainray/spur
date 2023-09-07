@@ -65,6 +65,7 @@ args.base_method = "gdro"                                       # gdro = group d
                                                                 # rw = reweight losses
                                                                 # irm = invariant risk minimization
                                                                 # arm = Adaptive Risk Minimization
+                                                                # erm = Empirical Risk Minimization 
 
 args.forget_method = 'random'                                   # random = Forget random weights
                                                                 # absolute = Forget 
