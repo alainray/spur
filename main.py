@@ -167,6 +167,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, help='Seed value', required=True)
     parser.add_argument('--forget_method', type=str, help='Forget Method', required=False, default="xxx")
     parser.add_argument('--forget_criteria', type=str, help='Forget Criteria', required=False, default="xxx")
+    parser.add_argument('--base_method', type=str, help='Baseline Method', required=False, default="")
     parser.add_argument('--n_interventions', type=int, help='Number of interventions', required=False, default=1)
     parser.add_argument('--spur', type=float, help='Spurious Probability', required=False, default=0.5)
     parser.add_argument('--forget_asc', type=int, help='Value of forget_asc', required=False, default=0)
