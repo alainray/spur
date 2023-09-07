@@ -110,7 +110,7 @@ def main(dls):
                                   'model': model.state_dict()}
             # best_model = model.clone()
 
-        if 'forget' in task_args.mode and args.task_iter <= training_schedule[-1]:
+        if 'forget' in args.mode and args.task_iter <= training_schedule[-1]:
             # Forget last layers before proceeding
             # Get mask
             print(f"Currently Forgetting using method: {args.forget_method.upper()} - %: {100*args.forget_threshold} - Criteria: {args.forget_criteria.upper()}_{args.forget_asc}")
@@ -142,7 +142,7 @@ def main(dls):
             model = forget_model(model, forget_mask)
             #model = restart_model(args, model)
 
-        if 'play' in task_args.mode and args.task_iter <= training_schedule[-1]:
+        if 'play' in args.mode and args.task_iter <= training_schedule[-1]:
             args.max_cur_iter = play_args.total_iterations
             # Replace classifier for play task
             #model = replaceModelClassifier(model, n_tasks)
@@ -193,7 +193,7 @@ if __name__ == '__main__':
     if not args.frozen_features:
         args.task_args.dataset['p'] = spur
         args.task_args.dataset['corr'] = round(2*spur -1,2) 
-        args.eval_datasets['task'] = args.task_args.dataset 
+
         args.eval_datasets['eval'].corr = 0.0#  round(2*spur -1,2) 
     args.task_args.dataset['bg'] = env
 
@@ -210,7 +210,7 @@ if __name__ == '__main__':
     print(f"Evaluating on: {args.eval_datasets['eval']}")
     print("======================================")
     model, best_model = main(dls)
-    #
+    
     if args.save_best:
         save_best_model(args, best_model)
     if args.save_model:

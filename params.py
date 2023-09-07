@@ -24,65 +24,85 @@ args = edict()
 
 args.seed = 222
 args.showData = False # show samples of data at start of training.
+
+# ----------- COMET ML ---------------------
 args.cometKey = 'w4JbvdIWlas52xdwict9MwmyH' 
 args.cometWs = 'alainray'
 args.cometName = 'spur'
-args.use_comet = True
-args.model = 'scnn'
-args.load_pretrained = False
-args.pretrained_model_type = "nobs"
-args.pretrained_path = 'models/scnn_0.625_cmnist_baseline.pth'
-args.frozen_features = False
-args.save_model = True
-args.save_best = True
-args.save_model_folder = 'models'
-args.save_grads = False
-args.save_grads_folder = 'grads'
-args.after_training = False
-args.save_model_path = ".pth"
-args.dataset_paths = {'synmnist': "SynMNIST",
-                       "camelyon": "../datasets",
-                       "mnistcifar": "../datasets/MNISTCIFAR"}
-args.hidden_dim = 100
-args.max_cur_iter = 0
-args.forget_method = 'random' # random/absolute/mag_full/mag_partial
-args.forget_criteria = 'avg_gradients'
-args.forget_asc = True # if True forget weights with least magnitude, else with greatest magnitude
-args.forget_threshold = 0.1
-args.n_freeze_layers = 1 
-args.output_dims = 1
-args.n_layers = 1                       # Number of layers to forget
-task_args.duplicate = False             # Do we add a different color copy of training image to dataset?
+args.use_comet = False
 
-task_args.n_interventions = 50
-task_args.total_iterations = 2000 # 9452 = 1 epoch
-task_args.dataset = {'name': 'mnistcifar', 'corr': 1.0, 'splits': ['train','val'], 'bs': 10000, "binarize": True}
-#task_args.dataset = {'name': 'synmnist', 'p': 0.875 , 'bg': 'nobg', 'splits': ['train','val'], 'baseline': False, 'bs': 16000}
-task_args.mode = ["task"
-                   #, 'play'
-               #,'forget'
+
+# --------------- MODEL ---------------------
+args.model = 'scnn'
+args.hidden_dim = 100
+args.output_dims = 1  # Equals number of classes
+
+# ---------- TRAINING PARAMS ----------------
+args.load_pretrained = False                                   # Do we start with a pretrained model or not
+args.pretrained_model_type = "nobs"                            # 'nobs' = trained on colored images - "bs" = trained on grayscale images. 
+args.pretrained_path = 'models/scnn_0.625_cmnist_baseline.pth' # path to pretrained model
+args.frozen_features = False                                   # If true, train only classifier.
+args.n_freeze_layers = 1 
+task_args.n_interventions = 50                                 # Amount of times we stop training before applying intervention (forgetting, playing)
+task_args.total_iterations = 2000                              # 9452 = 1 epoch
+
+# ---------- MODEL PERSISTENCE --------------
+args.save_model = False                                        # Save last model
+args.save_best = True                                          # Save best performing model
+args.save_model_folder = 'models'                              # Folder where models are stored 
+args.save_grads = False                                        # Whether to save the average gradient per epoch      
+args.save_grads_folder = 'grads'                               # Folder where gradients are saved to
+args.after_training = False                                    # Should we add additional training after final intervention
+args.save_model_path = ".pth"                                  # suffix for saved model (name depends on model settings)
+
+# ------------------- TRAINING METHOD ------------------------------
+args.max_cur_iter = 0
+args.mode = ["task"                                             # task = train on dataset defined in task_args 
+               #, 'play'                                        #  play = train on dataset defined in play_args 
+               #,'forget'                                       # forget = after training on task, forget using method defined in args.forget_method
                    ]
+args.base_method = "gdro"                                       # gdro = group distributionally robust optimization
+                                                                # rw = reweight losses
+                                                                # irm = invariant risk minimization
+                                                                # arm = Adaptive Risk Minimization
+
+args.forget_method = 'random'                                   # random = Forget random weights
+                                                                # absolute = Forget 
+                                                                # mag_full = Forget based on magnitude of criteria, considering the whole model.
+                                                                # mag_partial = Forget based on magnitude of criteria, considering each layer of the model.
+args.forget_criteria = 'avg_gradients'                          # avg_gradients = consider gradient magnitude
+                                                                # magnitude = consider parameter magnitude
+args.forget_asc = True                                          # if True forget weights with least magnitude, else with greatest magnitude
+args.forget_threshold = 0.1                                     # Forget ratio cutoff (0.1 means forget 10%)
+args.n_layers = 1                                               # Number of layers to forget
+
+task_args.duplicate = False                                     # Do we add a different color copy of training image to dataset? IS THIS BEING USED??
+#task_args.dataset = {'name': 'synmnist', 'p': 0.875 , 'bg': 'nobg', 'splits': ['train','val'], 'baseline': False, 'bs': 16000}
 play_args.n_interventions = 1
 play_args.total_iterations = 200
 play_args.dataset = {'name': 'synmnist', 'p': 0.95 , 'bg': 'nobg', 'splits': ['train','val'], 'baseline': False, 'bs': 10000}
 
-play_args.duplicate = False
-args.eval_datasets = dict()
+# --------- DATASET -----------------------------------------------------------------------------
+args.eval_datasets = dict()                                    # Which datasets to evaluate
+args.dataset_paths = {'synmnist': "../datasets/SynMNIST",      # Path for each dataset
+                      'mnistcifar': "../datasets/MNISTCIFAR"}
+task_args.dataset = {'name': 'mnistcifar', 'corr': 0.75, 'splits': ['train','id', 'val'], 'bs': 10000, "binarize": True}
+
+if 'play' in args.mode:
+    args.eval_datasets['play'] = play_args.dataset
+# All datasets listed on eval_datasets will be evaluated. One dataset per key, however, each dataset may evaluate multiple splits.
+args.eval_datasets['task'] = task_args.dataset 
+args.eval_datasets['eval'] = {'name': 'mnistcifar', 'corr': 0.0, 'splits': ['val'], 'bs': 50000, "binarize": True}
+play_args.duplicate = False                                     # PROBABLY NEVER USED
 
    # {'name': 'synmnist', 'p': 0.95 , 'bg': 'nobg', 'splits': ['train','val'], 'bs': 10000}
     
     #{'synmnist': { 'p': 0.75 , 'bg': 'nobg', 'splits': ['val'], 'bs': 128}}
-     
-
 #if 'task' in task_args.mode:
 #    args.eval_datasets['task'] = task_args.dataset
-
-if 'play' in task_args.mode:
-    args.eval_datasets['play'] = play_args.dataset
-args.eval_datasets['eval'] = {'name': 'mnistcifar', 'corr': 0.0, 'splits': ['val'], 'bs': 50000, "binarize": True}
-
 #args.eval_datasets['eval'] = {'name': 'synmnist', 'p': 0.95 , 'bg': 'images', 'splits': ['train','val','test'], 'bs': 10000}
 
+# --------------- Consolidate all settings on args --------------------
 args = update_args(args)
 args.task_args = task_args
 args.play_args = play_args

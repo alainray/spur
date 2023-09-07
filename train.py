@@ -6,7 +6,7 @@ from os import mkdir
 import os
 from torch.optim import SGD
 from sklearn.metrics import confusion_matrix
-
+from torch.nn.functional import softmax
 
 
 def calculate_mean_accuracy(logits, targets): # For multiple output dimensions
@@ -17,7 +17,7 @@ def calculate_mean_accuracy(logits, targets): # For multiple output dimensions
     return accuracy
 
 def mean_nll(logits, y):
-    return nn.functional.binary_cross_entropy_with_logits(logits, y)
+    return nn.functional.binary_cross_entropy_with_logits(logits, y,reduction="none")
 
 def mean_accuracy(logits, y): # When using a single output dim
     preds = (logits.squeeze() > 0.).float()
@@ -31,10 +31,7 @@ def get_grads(model):
     return grads
 
 def get_gradients_from_data(model, x, y):
-    def mean_nll(logits, y):
-        return nn.functional.binary_cross_entropy_with_logits(logits, y)
     opt = SGD(model.parameters(), lr=0.001)
-
     logits = model(x) # With Correlation
     loss = mean_nll(logits.squeeze(), y)
     opt.zero_grad()
@@ -49,25 +46,64 @@ def add_grads(grad, new_grad):
     
     return grad
 
+
+def get_grouped_loss(args, losses, groups):
+    bs = losses.shape[0]
+    g_losses, g_counts = group_losses(losses, groups)
+
+    if args.base_method == "gdro":
+        loss = group_dro(g_losses, 1.0)
+        loss /= bs
+    elif args.base_method == "rw":
+        loss = reweight(g_losses, g_counts)
+        loss /= bs
+
+    return loss
+
+
+def group_losses(losses, groups):
+    unique_values, inverse_indices = torch.unique(groups, return_inverse=True)       # Remap group values to the 0 to N_groups - 1 range
+    mapping_tensor = torch.arange(len(unique_values))                                # Create a mapping tensor from unique values to indices
+    groups = mapping_tensor[inverse_indices]                                         # Map the original tensor to indices using the inverse_indices
+    num_classes = groups.max() + 1                                                   # Determine the number of classes or categories (assuming indices are 0-based)                                    # Create an empty tensor to store the grouped losses
+    _, group_counts = groups.unique(return_counts=True)                              # Calculate the unique group values and their counts
+    one_hot_matrix = torch.eye(num_classes)[groups]                                  # Create mask for losses
+    grouped_losses = torch.mm(losses.unsqueeze(0).cuda(),one_hot_matrix.cuda())                    
+    return grouped_losses, group_counts
+
+def group_dro(g_losses, temp = 1.0):
+    p = softmax(temp*g_losses, dim=0).cuda()
+    return (p * g_losses).sum()
+
+def reweight(g_losses, g_counts):
+    p = (1/g_counts).cuda()
+    return (p * g_losses).sum()
+
 #@timing
 def train(model, dl, opt, args, caption='', return_grads=False):
     mode = 'play' if 'play' in caption else 'task'
+    
+    group_loss = True if args.base_method in ["rw", "gdro"] else False # Do we group losses?
+    
     loss_meter = AverageMeter()
     acc_meter = AverageMeter()
     total_batches = len(dl)
     metrics = {'grads': None}#'loss': None, 'acc': None}
     model.train()
     grads_list = []
-    loss_function = {True: nn.CrossEntropyLoss(), False: mean_nll }
+    loss_function = {True: nn.CrossEntropyLoss(reduction="none"), False: mean_nll }
     acc_function = {True: calculate_mean_accuracy, False: mean_accuracy}
     nonbinary = args.output_dims > 1
     l_f = loss_function[nonbinary]
     acc_f = acc_function[nonbinary]
+
+
     
-    for n_batch, (x, y) in enumerate(dl):
+    for n_batch, (x, y, g) in enumerate(dl):
         
         x = x.cuda()
         y = y.cuda() if nonbinary else y.float().cuda()
+        g = g.cuda()
         bs = x.shape[0]
         logits = model(x)
         
@@ -78,8 +114,13 @@ def train(model, dl, opt, args, caption='', return_grads=False):
         #       1. Group losses by group (group comes from dataset)
         #       2. Add functions that recalculate loss given group losses:
         #           This works for: Reweighting, Group DRO and IRM.
-        loss = l_f(logits.squeeze(), y)
 
+
+        losses = l_f(logits.squeeze(), y)
+        if group_loss:
+            loss = get_grouped_loss(args, losses, g)
+        else:
+            loss = losses.mean()
 
         acc = acc_f(logits, y)
         cur_loss = loss.detach().cpu()
@@ -151,24 +192,31 @@ def evaluate(args, model, dl, caption='train', show=True):
     all_predictions = []
     all_labels = []
     model.eval()
-    
-    loss_function = {True: nn.CrossEntropyLoss(), False: mean_nll }
+    group_loss = True if args.base_method in ["rw", "gdro"] else False # Do we group losses?
+   
+    loss_function = {True: nn.CrossEntropyLoss(reduction="none"), False: mean_nll }
     acc_function = {True: calculate_mean_accuracy, False: mean_accuracy}
     nonbinary = args.output_dims > 1
     l_f = loss_function[nonbinary]
 
     acc_f = acc_function[nonbinary]
     n_samples = len(dl.dataset)
-    for n_batch, (x, y) in enumerate(dl):
+    for n_batch, (x, y, g) in enumerate(dl):
         with torch.no_grad():
             x = x.cuda()
             y = y.cuda() if nonbinary else y.float().cuda()
+            g = g.cuda()
             bs = x.shape[0]
             logits = model(x)
             
             # Calculate metrics
             #print(logits.squeeze(), y)
-            loss = l_f(logits.squeeze(), y)
+            losses = l_f(logits.squeeze(), y)
+            if group_loss:
+                loss = get_grouped_loss(args, losses, g)
+            else:
+                loss = losses.mean()
+
             acc = acc_f(logits, y)
             cur_loss = loss.detach().cpu()
             loss_meter.update(cur_loss, bs)

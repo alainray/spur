@@ -45,7 +45,7 @@ def make_dataloaders(args): # entrega un dict con llaves los ambientes posibles 
     dls['task'] = dataset_function[ds_name](args, **ds_options)
            
     # Create play dataloader
-    if 'play' in args.task_mode:
+    if 'play' in args.mode:
         ds_name = args.play_dataset['name']
         ds_options = {k: v for k,v in args.play_dataset.items() if k != 'name'}
 
