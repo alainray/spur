@@ -17,8 +17,8 @@ def mnist_cifar(root, split, binarize=False):
     dataset = TensorDataset(ds['data'], ds['targets'], ds['group'])
 
     if split in ['train', 'id']:
-        print(len(dataset))
-        dss = random_split(dataset, [9000, 1000])
+        generator1 = torch.Generator().manual_seed(42)
+        dss = random_split(dataset, [9000, 1000], generator=generator1 )
         if split == 'train':
             return dss[0]
         elif split == 'id':
