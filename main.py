@@ -5,7 +5,7 @@ from dataset import make_dataloaders, get_spurious_samples
 from params import *                        # Experiment parameters 
 from models import create_model, restart_model
 from torch.optim import SGD, Adam
-from train import train, evaluate_splits, get_gradients_from_data
+from train import train, train_irm, evaluate_splits, get_gradients_from_data
 from utils import *
 from time import time
 from masks import generate_mask, forget_model
@@ -90,23 +90,34 @@ def main(dls):
     best_model = None
     for i, iters in enumerate(training_schedule):
         args.max_cur_iter = iters
-        dl = dls['task']['train']
+
         n_session +=1
         print(f'TRAINING UP TO ITERATION {iters} - Training Session {n_session}')
         while args.task_iter < args.max_cur_iter:
-            model, args, train_metrics = train(model, dl, opt, args,'task',args.save_grads)
+            if args.base_method != "irm":
+                dl = dls['task']['env1']['train']
+                model, args, train_metrics = train(model, dl, opt, args,'task',args.save_grads)
+            else:
+                dl = [dls['task']['env1']['train'], dls['task']['env2']['train']] # Two environments for IRM
+                model, args, train_metrics = train_irm(model, dl, opt, args,'task')
             # Evaluate on all environments/splits!
             #if args.save_model:
             #    save_model(args, model)
             grads += train_metrics['grads']
             metrics = evaluate_splits(model, dls['eval'], args, "task")
             if args.save_best:
-                if metrics['task']['val_loss'] < min_val_loss:
-                    min_val_loss = metrics['task']['val_loss']
-                    print(f"New best model! Best val loss is now: {min_val_loss:.2f} and acc: {metrics['task']['val_acc']:.2f}")
+                if args.base_method != "irm":
+                    current_loss = metrics['task_env1']['val_loss']
+                    current_acc = metrics['task_env1']['val_acc']
+                else:
+                    current_loss = (metrics['task_env1']['val_loss'] + metrics['task_env2']['val_loss'])/2
+                    current_acc = (metrics['task_env1']['val_acc'] + metrics['task_env2']['val_acc'])/2
+                if current_loss < min_val_loss:
+                    min_val_loss = current_loss
+                    print(f"New best model! Best val loss is now: {min_val_loss:.2f} and acc: {current_acc:.2f}")
                     best_model = {'iter': args.task_iter, 
                                   'loss': min_val_loss,
-                                  'acc': metrics['task']['val_acc'],
+                                  'acc':  current_acc,
                                   'model': model.state_dict()}
             # best_model = model.clone()
 
@@ -116,8 +127,6 @@ def main(dls):
             print(f"Currently Forgetting using method: {args.forget_method.upper()} - %: {100*args.forget_threshold} - Criteria: {args.forget_criteria.upper()}_{args.forget_asc}")
             print(f"Iters delta: {iters-last_session_iterations}")
 
-
-            #print(len(grads),len(grads[:-last_session_iterations]))
             avg_grads, std_grads = average_grads(grads[-(iters-last_session_iterations):])
             last_session_iterations = iters
             if args.forget_method == 'random':

@@ -37,13 +37,22 @@ def get_spurious_samples():
 def make_dataloaders(args): # entrega un dict con llaves los ambientes posibles ()
 
     dls = dict()
+    task_dl = dict()
     eval_dl =  dict()
     # Create task dataloader
-    ds_name = args.task_args.dataset['name']
-    ds_options = {k: v for k,v in args.task_args.dataset.items() if k != 'name'}
+    #ds_name = args.task_args.dataset['name']
+    #ds_options = {k: v for k,v in args.task_args.dataset.items() if k != 'name'}
 
-    dls['task'] = dataset_function[ds_name](args, **ds_options)
-           
+    #dls['task'] = dataset_function[ds_name](args, **ds_options)
+    
+    # Create task dataloaders (only useful for IRM)
+    for ds_id, task_ds in args.task_datasets.items():
+        ds_name = task_ds['name']
+        ds_options = {k: v for k,v in task_ds.items() if k != 'name'}
+        task_dl[ds_id] = dataset_function[ds_name](args, **ds_options)
+
+    dls['task'] = task_dl
+
     # Create play dataloader
     if 'play' in args.mode:
         ds_name = args.play_dataset['name']

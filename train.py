@@ -7,7 +7,7 @@ import os
 from torch.optim import SGD
 from sklearn.metrics import confusion_matrix
 from torch.nn.functional import softmax
-
+from torch import autograd
 
 def calculate_mean_accuracy(logits, targets): # For multiple output dimensions
     _, predicted_labels = torch.max(logits, dim=1)
@@ -47,6 +47,17 @@ def add_grads(grad, new_grad):
     return grad
 
 
+# IRM Penalty
+
+def penalty(logits, y):
+    scale = torch.tensor(1.).cuda().requires_grad_()
+    #print(logits.shape, y.shape)
+    loss = mean_nll(logits.squeeze() * scale, y)
+    grad = autograd.grad(loss.mean(), [scale], create_graph=True)[0]
+    return torch.sum(grad**2)
+
+# Functions for using group based methods
+
 def get_grouped_loss(args, losses, groups):
     bs = losses.shape[0]
     g_losses, g_counts = group_losses(losses, groups)
@@ -80,6 +91,59 @@ def reweight(g_losses, g_counts):
     return (p * g_losses).sum()
 
 #@timing
+def train_irm(model, dls, opt, args, caption=""): # We are assuming one batch per epoch
+
+    metrics = {'grads': None}#'loss': None, 'acc': None}
+    mode = 'play' if 'play' in caption else 'task'
+    model.train()
+    loss_function = {True: nn.CrossEntropyLoss(reduction="none"), False: mean_nll }
+    acc_function = {True: calculate_mean_accuracy, False: mean_accuracy}
+    nonbinary = args.output_dims > 1
+    l_f = loss_function[nonbinary]
+    acc_f = acc_function[nonbinary]
+    grads_list = []
+    loss_meter = AverageMeter()
+    acc_meter = AverageMeter()
+    loss = 0
+    cur_loss = 0
+    for dl in dls:                              # For each environment...
+        total_batches = len(dl)
+        for n_batch, (x, y, _) in enumerate(dl):      # For each batch
+            x = x.cuda()
+            y = y.cuda() if nonbinary else y.float().cuda()
+            bs = x.shape[0]
+            # forward pass
+            logits = model(x)
+            # loss
+            losses = l_f(logits.squeeze(), y)
+            loss += losses.mean() + penalty(logits, y) # calculate penalty
+
+            acc = acc_f(logits, y)
+            cur_loss += loss.detach().cpu()
+            loss_meter.update(cur_loss, bs)
+            acc_meter.update(acc, bs) 
+
+    metrics[f'{caption}_loss'] = float(loss_meter.avg)
+    metrics[f'{caption}_acc'] = float(100*acc_meter.avg)
+    metrics[f'{mode}_iter'] = args[f'{mode}_iter']
+            
+    # Backpropagation Update
+    opt.zero_grad()
+    loss.backward()
+    opt.step()
+    # Report results
+    if n_batch % 20 == 0:
+        print(f'\r[{caption.upper():11s}] [{(n_batch+1)*bs:05d}/{total_batches*bs}] {args[f"{mode}_iter"]:03d} Loss: {loss:.3f} Acc: {100*acc:.2f}%', end="")
+    #args.exp.log_metrics(metrics, prefix=caption, step=args[f'{mode}_iter'], epoch=args[f'{mode}_iter'])
+    metrics['grads'] = grads_list
+    # Exit training if we know there's an intervention coming!
+    if args.max_cur_iter == args[f'{mode}_iter']:
+        args[f'{mode}_iter'] +=1
+        return model, args, metrics
+    args[f'{mode}_iter'] +=1
+    
+    return model, args, metrics
+
 def train(model, dl, opt, args, caption='', return_grads=False):
     mode = 'play' if 'play' in caption else 'task'
     
@@ -96,8 +160,6 @@ def train(model, dl, opt, args, caption='', return_grads=False):
     nonbinary = args.output_dims > 1
     l_f = loss_function[nonbinary]
     acc_f = acc_function[nonbinary]
-
-
     
     for n_batch, (x, y, g) in enumerate(dl):
         
@@ -113,7 +175,7 @@ def train(model, dl, opt, args, caption='', return_grads=False):
         #       It also requires changing the architecture to support adaptation.
         #       1. Group losses by group (group comes from dataset)
         #       2. Add functions that recalculate loss given group losses:
-        #           This works for: Reweighting, Group DRO and IRM.
+        #           This works for:  IRM.
 
 
         losses = l_f(logits.squeeze(), y)
@@ -177,8 +239,7 @@ def evaluate_splits(model, dls, args, stage):
             for k, v in metrics.items():
                 results[k] = v
         all_results[ds_name] = results
-    #print(all_results)
-    #print(results)
+
     pretty_print(all_results,args,stage)
     for ds_name, results in all_results.items():
         args.exp.log_metrics(results, prefix=ds_name, step=args[f'task_iter'], epoch=args[f'task_iter'])

@@ -85,14 +85,19 @@ play_args.dataset = {'name': 'synmnist', 'p': 0.95 , 'bg': 'nobg', 'splits': ['t
 
 # --------- DATASET -----------------------------------------------------------------------------
 args.eval_datasets = dict()                                    # Which datasets to evaluate
+args.task_datasets = dict()     
 args.dataset_paths = {'synmnist': "../datasets/SynMNIST",      # Path for each dataset
                       'mnistcifar': "../datasets/MNISTCIFAR"}
 task_args.dataset = {'name': 'mnistcifar', 'corr': 0.75, 'splits': ['train','id', 'val'], 'bs': 10000, "binarize": True}
+args.task_datasets['env1'] = {'name': 'mnistcifar', 'corr': 0.75, 'splits': ['train','id', 'val'], 'bs': 10000, "binarize": True}
+args.task_datasets['env2'] = {'name': 'mnistcifar', 'corr': 0.9, 'splits': ['train','id', 'val'], 'bs': 10000, "binarize": True}
+
 
 if 'play' in args.mode:
     args.eval_datasets['play'] = play_args.dataset
 # All datasets listed on eval_datasets will be evaluated. One dataset per key, however, each dataset may evaluate multiple splits.
-args.eval_datasets['task'] = task_args.dataset 
+for ds_id, ds in args.task_datasets.items():
+    args.eval_datasets[f'task_{ds_id}'] = ds 
 args.eval_datasets['eval'] = {'name': 'mnistcifar', 'corr': 0.0, 'splits': ['val'], 'bs': 50000, "binarize": True}
 play_args.duplicate = False                                     # PROBABLY NEVER USED
 

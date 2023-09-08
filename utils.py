@@ -11,7 +11,7 @@ import random
 def pretty_print(m, args, mode):
     
     line = f"{args[f'{mode}_iter']-1:04d} |"
-    min_split = {'train': "tr", "test": 'ts', 'val': 'vl','id': 'ivl'}
+    min_split = {'train': "tr", "test": 'ZC', 'val': 'AC','id': 'ID'}
     for ds_name, metrics in m.items():
 
         line+= f"<{ds_name.upper()}>=[LOSS] "
