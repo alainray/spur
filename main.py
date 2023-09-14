@@ -201,8 +201,8 @@ if __name__ == '__main__':
         args.pretrained_path = f'models/scnn_synmnist_{spur}_{env}_{args.pretrained_model_type}_cmnist_baseline.pth'
 
     if not args.frozen_features:
-        args.task_args.dataset['p'] = spur
-        args.task_args.dataset['corr'] = round(2*spur -1,2) 
+        args.task_datasets['env1']['p'] = spur
+        args.task_datasets['env1']['corr']  = round(2*spur -1,2) 
 
         args.eval_datasets['eval'].corr = 0.0#  round(2*spur -1,2) 
     args.task_args.dataset['bg'] = env
