@@ -4,10 +4,11 @@ from easydict import EasyDict  as edict
 def update_args(args):
 
     for k,v in task_args.items():
-        if k != 'dataset':
+        if k not in ['dataset','task_datasets']:
             args['task_'+k] = v
-        for k, v in task_args.dataset.items():
-            args['task_dataset_' + k] = v
+        for k, v in args.task_datasets.items():
+            for k1, v1 in v.items():
+                args[f'task_dataset_{k}_' + k1] = v1
     for k,v in play_args.items():
         if k != 'dataset':
             args['play_'+k] = v
@@ -88,7 +89,7 @@ args.eval_datasets = dict()                                    # Which datasets 
 args.task_datasets = dict()     
 args.dataset_paths = {'synmnist': "../datasets/SynMNIST",      # Path for each dataset
                       'mnistcifar': "../datasets/MNISTCIFAR"}
-task_args.dataset = {'name': 'mnistcifar', 'corr': 0.75, 'splits': ['train','id', 'val'], 'bs': 10000, "binarize": True}
+#task_args.dataset = {'name': 'mnistcifar', 'corr': 0.75, 'splits': ['train','id', 'val'], 'bs': 10000, "binarize": True}
 args.task_datasets['env1'] = {'name': 'mnistcifar', 'corr': 0.75, 'splits': ['train','id', 'val'], 'bs': 10000, "binarize": True}
 args.task_datasets['env2'] = {'name': 'mnistcifar', 'corr': 0.9, 'splits': ['train','id', 'val'], 'bs': 10000, "binarize": True}
 

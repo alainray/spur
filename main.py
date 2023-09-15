@@ -205,7 +205,7 @@ if __name__ == '__main__':
         args.task_datasets['env1']['corr']  = round(2*spur -1,2) 
 
         args.eval_datasets['eval'].corr = 0.0#  round(2*spur -1,2) 
-    args.task_args.dataset['bg'] = env
+    #args.task_args.dataset['bg'] = env
 
     #args.eval_datasets['task'] = task_args.dataset
 
@@ -216,7 +216,7 @@ if __name__ == '__main__':
     # reload datasets
     dls = make_dataloaders(args)
     print("======================================")
-    print(f"Training on: {task_args.dataset}")
+    print(f"Training on: {args.task_datasets['env1']}")
     print(f"Evaluating on: {args.eval_datasets['eval']}")
     print(f"Training method: {args.base_method.upper()}")
     print("======================================")
