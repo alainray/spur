@@ -3,7 +3,6 @@ from params import args
 import torchvision
 from torchvision.transforms import Resize
 import torch
-from train import get_grads
 import datasets.camelyon as camelyon
 import datasets.mnistcifar as mc
 # Generic dataset

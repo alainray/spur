@@ -5,7 +5,7 @@ from dataset import make_dataloaders, get_spurious_samples
 from params import *                        # Experiment parameters 
 from models import create_model, restart_model
 from torch.optim import SGD, Adam
-from train import train, train_irm, evaluate_splits, get_gradients_from_data
+from train import train, evaluate_splits
 from utils import *
 from time import time
 from masks import generate_mask, forget_model
@@ -56,7 +56,7 @@ def main(dls):
     model=create_model(args).cuda()
     if args.load_pretrained:
         model = load_model(model, args.pretrained_path).cuda()
-    
+
     if args.frozen_features:
         model = freeze_model(args, model).cuda()
         model = restart_model(args, model)
@@ -79,7 +79,6 @@ def main(dls):
 
     # Evaluation before training
     evaluate_splits(model, dls['eval'], args, "task")
-
     # Training starts
     args.task_iter = 1
     args.play_iter = 1
@@ -94,27 +93,20 @@ def main(dls):
         n_session +=1
         print(f'TRAINING UP TO ITERATION {iters} - Training Session {n_session}')
         while args.task_iter < args.max_cur_iter:
-            if args.base_method != "irm":
-                dl = dls['task']['env1']['train']
-                model, args, train_metrics = train(model, dl, opt, args,'task',args.save_grads)
-            else:
-                dl = [dls['task']['env1']['train'], dls['task']['env2']['train']] # Two environments for IRM
-                model, args, train_metrics = train_irm(model, dl, opt, args,'task')
+
+            dl = dls['task']['env1']['train']
+            model, args, train_metrics = train(model, dl, opt, args,'task',args.save_grads)
             # Evaluate on all environments/splits!
             #if args.save_model:
             #    save_model(args, model)
-            grads += train_metrics['grads']
+            #grads += train_metrics['grads']
             metrics = evaluate_splits(model, dls['eval'], args, "task")
             if args.save_best:
-                if args.base_method != "irm":
-                    current_loss = metrics['task_env1']['val_loss']
-                    current_acc = metrics['task_env1']['val_acc']
-                else:
-                    current_loss = (metrics['task_env1']['val_loss'] + metrics['task_env2']['val_loss'])/2
-                    current_acc = (metrics['task_env1']['val_acc'] + metrics['task_env2']['val_acc'])/2
+                current_loss = metrics['task_env1']['val_loss']
+                current_acc = metrics['task_env1']['val_acc']
                 if current_loss < min_val_loss:
                     min_val_loss = current_loss
-                    print(f"New best model! Best val loss is now: {min_val_loss:.2f} and acc: {current_acc:.2f}")
+                    print(f"New best model! Best val loss is now: {min_val_loss:.3f} and acc: {100*current_acc:.2f}%")
                     best_model = {'iter': args.task_iter, 
                                   'loss': min_val_loss,
                                   'acc':  current_acc,

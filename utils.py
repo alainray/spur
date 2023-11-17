@@ -1,5 +1,6 @@
 from comet_ml import Experiment, ExistingExperiment
 import torch
+import torch.nn as nn
 from functools import wraps
 from time import time
 import numpy as np
@@ -7,30 +8,77 @@ import os
 import torchvision
 import matplotlib.pyplot as plt
 import random
+from torch.optim import SGD
+import pandas as pd
+from tabulate import tabulate
+
+# Utilities for handling gradients from model
+def get_grads(model):
+    grads = dict()
+    for name, param in model.named_parameters():
+        if param.grad is not None:
+            grads[name] = param.grad.cpu()
+    return grads
+
+def get_gradients_from_data(model, x, y):
+    opt = SGD(model.parameters(), lr=0.001)
+    logits = model(x) # With Correlation
+    loss = mean_nll(logits.squeeze(), y)
+    opt.zero_grad()
+    loss.backward()
+    grads = get_grads(model)
+    return grads
+
+def add_grads(grad, new_grad):
+    for n, g in grad.items():
+        grad[n] += g
+    
+    return grad
+
+def to_pandas_style_dict(data):
+    res = dict()
+    all_metrics = ['loss',"best_group_loss","worst_group_loss",
+                   "acc","best_group_acc","worst_group_acc"
+                   ]
+    metrics_list = ["_".join(k.split("_")[1:]) for k in data.keys()]
+    common_metrics = [element for element in all_metrics if element in metrics_list]
+
+    for metric in common_metrics:
+        res[metric] = []
+        res[f"{metric}_id"] = []
+        for k, v in data.items():
+            split = k.split("_")[0]
+            m = "_".join(k.split("_")[1:])
+            if metric == m:
+                if "acc" in m:
+                    res[metric] += [f"{100*v:.2f}%"]
+                else:
+                    res[metric] += [f"{v:.3f}"]
+                res[f"{metric}_id"] += [split]
+
+    def get_all_splits(data):
+        splits = set()
+        for k in data.keys():
+            splits.add(k.split("_")[0])
+        return splits
+    
+    splits = get_all_splits(data)
+    final = {k: []  for k in splits}
+    final['metric'] =  []
+
+    for k, v in res.items():
+        if "id" not in k:
+            final['metric']+=[k]
+            for value, split in zip(v, res[f"{k}_id"]):
+                final[split] += [value]
+    return final
 
 def pretty_print(m, args, mode):
     
-    line = f"{args[f'{mode}_iter']-1:04d} |"
-    min_split = {'train': "tr", "test": 'ZC', 'val': 'AC','id': 'ID'}
     for ds_name, metrics in m.items():
-
-        line+= f"<{ds_name.upper()}>=[LOSS] "
-
-        for k, v in metrics.items():
-    
-            split = k.split('_')[0]
-            metric = k.split('_')[-1]
-            if metric == 'loss':
-                line += f"{min_split[split]}: {v:.3f} "
-        line += "- [ACC] "
-    
-        for k, v in metrics.items():
-            split = k.split('_')[0]
-            metric = k.split('_')[-1]
-            if metric == 'acc':
-                line += f"{min_split[split]}: {v:.1f} "
-        line += '|'
-    print(line)
+        df = pd.DataFrame(to_pandas_style_dict(metrics))
+        df.set_index("metric", inplace=True)
+        print(tabulate(df, headers=[f"#{args.task_iter:4d}-{ds_name}-metric"]+df.columns.tolist()))
     
 def show_data(dls, envs, splits):
     def plot_dataset(dataset, caption=""):
@@ -180,3 +228,15 @@ def freeze_model(args, model): # Freeze all layers except classifier
             param.requires_grad = True
     
     return model
+
+if __name__ == '__main__':
+    import torch
+    data = {'train_acc': 1, 'train_loss': 2, 'train_worst_group_loss': 3, 'train_worst_group_acc': 4,
+             'val_acc': 5, 'val_loss': 6, 'val_worst_group_loss': 8, 'val_worst_group_acc': 8}
+    
+
+
+            
+              
+    #print(res)      
+    #group_by_split(data)

@@ -6,9 +6,9 @@ def update_args(args):
     for k,v in task_args.items():
         if k not in ['dataset','task_datasets']:
             args['task_'+k] = v
-        for k, v in args.task_datasets.items():
-            for k1, v1 in v.items():
-                args[f'task_dataset_{k}_' + k1] = v1
+    for k, v in args.task_datasets.items():
+        for k1, v1 in v.items():
+            args[f'task_dataset_{k}_' + k1] = v1
     for k,v in play_args.items():
         if k != 'dataset':
             args['play_'+k] = v
@@ -64,8 +64,6 @@ args.mode = ["task"                                             # task = train o
                    ]
 args.base_method = "gdro"                                       # gdro = group distributionally robust optimization
                                                                 # rw = reweight losses
-                                                                # irm = invariant risk minimization
-                                                                # arm = Adaptive Risk Minimization
                                                                 # erm = Empirical Risk Minimization 
 
 args.forget_method = 'random'                                   # random = Forget random weights
@@ -90,9 +88,8 @@ args.task_datasets = dict()
 args.dataset_paths = {'synmnist': "../datasets/SynMNIST",      # Path for each dataset
                       'mnistcifar': "../datasets/MNISTCIFAR"}
 #task_args.dataset = {'name': 'mnistcifar', 'corr': 0.75, 'splits': ['train','id', 'val'], 'bs': 10000, "binarize": True}
-args.task_datasets['env1'] = {'name': 'mnistcifar', 'corr': 0.75, 'splits': ['train','id', 'val'], 'bs': 10000, "binarize": True}
-args.task_datasets['env2'] = {'name': 'mnistcifar', 'corr': 0.9, 'splits': ['train','id', 'val'], 'bs': 10000, "binarize": True}
-
+args.task_datasets['env1'] = {'name': 'mnistcifar', 'corr': 0.0, 'splits': ['train', 'val'], 'bs': 10000, "binarize": True}
+#args.task_datasets['env2'] = {'name': 'mnistcifar', 'corr': 0.9, 'splits': ['train', 'val'], 'bs': 10000, "binarize": True}
 
 if 'play' in args.mode:
     args.eval_datasets['play'] = play_args.dataset
@@ -101,14 +98,8 @@ for ds_id, ds in args.task_datasets.items():
     args.eval_datasets[f'task_{ds_id}'] = ds 
 args.eval_datasets['eval'] = {'name': 'mnistcifar', 'corr': 0.0, 'splits': ['val'], 'bs': 50000, "binarize": True}
 play_args.duplicate = False                                     # PROBABLY NEVER USED
-
-   # {'name': 'synmnist', 'p': 0.95 , 'bg': 'nobg', 'splits': ['train','val'], 'bs': 10000}
-    
-    #{'synmnist': { 'p': 0.75 , 'bg': 'nobg', 'splits': ['val'], 'bs': 128}}
-#if 'task' in task_args.mode:
-#    args.eval_datasets['task'] = task_args.dataset
-#args.eval_datasets['eval'] = {'name': 'synmnist', 'p': 0.95 , 'bg': 'images', 'splits': ['train','val','test'], 'bs': 10000}
-
+# -------- METRICS -----------------------------------------------------------------------------
+args.metrics = ['acc', 'loss','worst_group_loss', 'worst_group_acc', "best_group_loss", "best_group_acc"]
 # --------------- Consolidate all settings on args --------------------
 args = update_args(args)
 args.task_args = task_args
