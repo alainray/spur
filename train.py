@@ -98,7 +98,7 @@ def train(model, dl, opt, args, caption='', return_grads=False):
             args[f'{mode}_iter'] +=1
             return model, args, metrics
         args[f'{mode}_iter'] +=1
-    print("")
+    print("",flush=True)
     return model, args, metrics 
         # Calculate metrics
 
