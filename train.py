@@ -27,9 +27,7 @@ def get_grouped_loss(args, losses, groups):
 
 
 def group_dro(g_losses, temp = 1.0):
-    print(temp*g_losses, g_losses.shape)
     p = softmax(*g_losses, dim=0).cuda()
-    print(p)
     return (p * g_losses).sum()
 
 def reweight(g_losses, g_counts):

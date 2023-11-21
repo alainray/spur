@@ -101,7 +101,7 @@ def show_data(dls, envs, splits):
 
 def set_random_state(args):
     os.environ['CUBLAS_WORKSPACE_CONFIG']=':4096:8'
-    #torch.use_deterministic_algorithms(True)
+    torch.use_deterministic_algorithms(True)
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)
     torch.backends.cudnn.benchmark = False

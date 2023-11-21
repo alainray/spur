@@ -110,6 +110,7 @@ def main(dls):
                     best_model = {'iter': args.task_iter, 
                                   'loss': min_val_loss,
                                   'acc':  current_acc,
+                                  "args": args,
                                   'model': model.state_dict()}
             # best_model = model.clone()
 

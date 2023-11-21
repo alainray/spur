@@ -196,11 +196,11 @@ class SimpleCNN(nn.Module):
         layer.add_module('relu3',nn.ReLU(inplace=True))
         if add_pooling:
             layer.add_module('pool3',nn.MaxPool2d(kernel_size=2, stride=1))
-        layer.add_module('gap', nn.AdaptiveAvgPool2d((6,6)))
+        #layer.add_module('gap', nn.AdaptiveAvgPool2d((6,6)))
         layer.add_module('flatten', nn.Flatten())
         self.features = layer
 
-        self.fc = nn.Sequential(nn.Linear(4608*N, num_classes))
+        self.fc = nn.Sequential(nn.Linear(2688*N, num_classes))
         '''for lin in [lin1, lin2, lin3]:
             nn.init.xavier_uniform_(lin.weight)
             nn.init.zeros_(lin.bias)'''
