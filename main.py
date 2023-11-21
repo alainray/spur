@@ -93,9 +93,9 @@ def main(dls):
     grads = []
     n_session = 0
     last_session_iterations = 0
-    min_val_loss = 100000.0
+    min_val_acc= 0.0
     best_model = None
-
+    metric_for_best = "worst_group"
     for i, iters in enumerate(training_schedule):
         args.max_cur_iter = iters
 
@@ -114,15 +114,15 @@ def main(dls):
                 all_metrics[ds_name] = update_metrics(all_metrics[ds_name], m)
             if args.save_best:
    
-                current_loss = metrics['task_env1']['val_loss']
-                current_acc = metrics['task_env1']['val_acc']
-                if current_loss < min_val_loss:
-                    min_val_loss = current_loss
-                    print(f"New best model! Best val loss is now: {min_val_loss:.3f} and acc: {100*current_acc:.2f}%")
+                current_loss = metrics['eval'][f'val_{metric_for_best}_loss']
+                current_acc = metrics['eval'][f'val_{metric_for_best}_acc']
+                if current_acc > min_val_acc:
+                    min_val_acc = current_acc
+                    print(f"New best model! Best val {metric_for_best} acc is now: {100*min_val_acc:.2f}% and loss: {current_loss:.3f}")
                     print("",flush=True,end="")
                     best_model = {'iter': args.task_iter-1, 
-                                  'loss': min_val_loss,
-                                  'acc':  current_acc,
+                                  'loss': current_loss,
+                                  'acc':  min_val_acc,
                                   #"args": args,
                                   'model': model.state_dict()}
             # best_model = model.clone()
