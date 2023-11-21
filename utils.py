@@ -11,6 +11,7 @@ import random
 from torch.optim import SGD
 import pandas as pd
 from tabulate import tabulate
+from os.path import join
 
 # Utilities for handling gradients from model
 def get_grads(model):
@@ -78,7 +79,7 @@ def pretty_print(m, args, mode):
     for ds_name, metrics in m.items():
         df = pd.DataFrame(to_pandas_style_dict(metrics))
         df.set_index("metric", inplace=True)
-        print(tabulate(df, headers=[f"#{args.task_iter:4d}-{ds_name}-metric"]+df.columns.tolist()))
+        print(tabulate(df, headers=[f"#{args.task_iter-1:4d}-{ds_name}-metric"]+df.columns.tolist()))
     
 def show_data(dls, envs, splits):
     def plot_dataset(dataset, caption=""):
@@ -191,16 +192,46 @@ def make_dataset_id(ds_dict):
 
 def save_best_model(args, model_dict):
 
-    model_id = make_dataset_id(args.task_args.dataset)
+    model_id = make_dataset_id(args.task_datasets['env1'])
     path = f'{args.save_model_folder}/{args.model}_{args.base_method}_{model_id}_{args.seed}_best_{args.save_model_path}'
     torch.save(model_dict, path)
 
 def save_model(args, model, modifier=""):
 
-    model_id = make_dataset_id(args.task_args.dataset)
+    model_id = make_dataset_id(args.task_datasets['env1'])
     frozen = "frz" if args.frozen_features else 'nofrz'
     path = f'{args.save_model_folder}/{args.model}_{model_id}_{args.base_method}_{frozen}_{args.task_iter}_{args.seed}_{args.save_model_path}'
     torch.save(model.state_dict(), path)
+
+def make_experiment_id():
+    file_path = "exp_ids.txt"
+    if os.path.isfile(file_path):
+        with open(file_path, 'r') as file:
+            for line in file:
+                pass
+            number = int(line)
+        file.close()
+        with open(file_path, 'w') as file:
+            file.write(str(number+1))
+        return number + 1
+    else:
+        with open(file_path, 'w') as file:
+            file.write("1")
+        file.close()
+        return 1
+    
+def update_metrics(all, new):
+    
+    
+    for k,v in new.items():
+        all[k].append(v)
+    return all
+
+def save_stats(args, metrics):
+    def make_human_readable_name(args):
+        return "_".join([str(args.exp_id), make_dataset_id(args.task_datasets['env1']),str(args.seed)])
+    filename = make_human_readable_name(args)
+    torch.save(metrics, join("stats",filename))
 
 def load_model(model, weights_path):
     w = torch.load(weights_path)

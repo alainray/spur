@@ -45,11 +45,12 @@ args.pretrained_path = 'models/scnn_0.625_cmnist_baseline.pth' # path to pretrai
 args.frozen_features = False                                   # If true, train only classifier.
 args.n_freeze_layers = 1 
 task_args.n_interventions = 50                                 # Amount of times we stop training before applying intervention (forgetting, playing)
-task_args.total_iterations = 2000                              # 9452 = 1 epoch
+task_args.total_iterations = 5                                 # 9452 = 1 epoch
 
 # ---------- MODEL PERSISTENCE --------------
 args.save_model = False                                        # Save last model
 args.save_best = True                                          # Save best performing model
+args.save_stats = True                                         # Save final performance metrics
 args.save_model_folder = 'models'                              # Folder where models are stored 
 args.save_grads = False                                        # Whether to save the average gradient per epoch      
 args.save_grads_folder = 'grads'                               # Folder where gradients are saved to

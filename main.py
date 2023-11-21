@@ -70,15 +70,23 @@ def main(dls):
     
     model.comet_experiment_key = exp.get_key() # To retrieve existing experiment
     args.exp = exp
+    args.exp_id = make_experiment_id()
     # Training loop
     args.task_iter = 0
     args.play_iter = 0
 
     #if args.showData:
     #    show_data(dls, envs, splits)
-
+    # Initialize stored metrics
+    all_metrics = {'task_env1': dict(), 'eval': dict()}
+    for k in all_metrics.keys():
+        for split in ["train", "val"]:
+            for m in args.metrics:
+                all_metrics[k][f"{split}_{m}"] = []
     # Evaluation before training
-    evaluate_splits(model, dls['eval'], args, "task")
+    metrics = evaluate_splits(model, dls['eval'], args, "task")
+    for ds_name, m in metrics.items():
+        all_metrics[ds_name] = update_metrics(all_metrics[ds_name], m)
     # Training starts
     args.task_iter = 1
     args.play_iter = 1
@@ -87,12 +95,13 @@ def main(dls):
     last_session_iterations = 0
     min_val_loss = 100000.0
     best_model = None
+
     for i, iters in enumerate(training_schedule):
         args.max_cur_iter = iters
 
         n_session +=1
         print(f'TRAINING UP TO ITERATION {iters} - Training Session {n_session}')
-        while args.task_iter < args.max_cur_iter:
+        while args.task_iter <= args.max_cur_iter:
 
             dl = dls['task']['env1']['train']
             model, args, train_metrics = train(model, dl, opt, args,'task',args.save_grads)
@@ -101,16 +110,19 @@ def main(dls):
             #    save_model(args, model)
             #grads += train_metrics['grads']
             metrics = evaluate_splits(model, dls['eval'], args, "task")
+            for ds_name, m in metrics.items():
+                all_metrics[ds_name] = update_metrics(all_metrics[ds_name], m)
             if args.save_best:
+   
                 current_loss = metrics['task_env1']['val_loss']
                 current_acc = metrics['task_env1']['val_acc']
                 if current_loss < min_val_loss:
                     min_val_loss = current_loss
                     print(f"New best model! Best val loss is now: {min_val_loss:.3f} and acc: {100*current_acc:.2f}%")
-                    best_model = {'iter': args.task_iter, 
+                    best_model = {'iter': args.task_iter-1, 
                                   'loss': min_val_loss,
                                   'acc':  current_acc,
-                                  "args": args,
+                                  #"args": args,
                                   'model': model.state_dict()}
             # best_model = model.clone()
 
@@ -159,6 +171,9 @@ def main(dls):
     
     if args.save_grads:
         save_grads(args, grads)
+
+    if args.save_stats:
+        save_stats(args, all_metrics)
     return model, best_model
 
 
