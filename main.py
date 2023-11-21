@@ -119,6 +119,7 @@ def main(dls):
                 if current_loss < min_val_loss:
                     min_val_loss = current_loss
                     print(f"New best model! Best val loss is now: {min_val_loss:.3f} and acc: {100*current_acc:.2f}%")
+                    print("",flush=True,end="")
                     best_model = {'iter': args.task_iter-1, 
                                   'loss': min_val_loss,
                                   'acc':  current_acc,
