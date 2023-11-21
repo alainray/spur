@@ -229,7 +229,7 @@ def update_metrics(all, new):
 
 def save_stats(args, metrics):
     def make_human_readable_name(args):
-        return "_".join([str(args.exp_id), make_dataset_id(args.task_datasets['env1']),str(args.seed)])
+        return "_".join([str(args.exp_id), make_dataset_id(args.task_datasets['env1']),str(args.seed),args.base_method])
     filename = make_human_readable_name(args)
     torch.save(metrics, join("stats",filename))
 
