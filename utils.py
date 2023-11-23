@@ -221,8 +221,6 @@ def make_experiment_id():
         return 1
     
 def update_metrics(all, new):
-    
-    
     for k,v in new.items():
         all[k].append(v)
     return all

@@ -4,7 +4,12 @@ from easydict import EasyDict  as edict
 import torch
 import torch.nn as nn
 from torchvision.models import densenet121
-
+from torch import Tensor
+from torch.nn.parameter import Parameter
+import torch.nn.init as init
+import math
+from torch.nn import functional as F
+from random import randint
 
 def create_model(args):
     archs = edict()
@@ -22,6 +27,86 @@ def densenet(args, in_channels=3, n_classes=1):
     model.features[0] = torch.nn.Conv2d(in_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
     model.classifier = torch.nn.Linear(num_ftrs, n_classes)
     return model
+
+
+class SVDropClassifier(nn.Module):
+    """
+    __constants__ = ['in_features', 'out_features']
+    in_features: int
+    out_features: int
+    weight: Tensor a """
+
+    def __init__(self, in_features: int, out_features: int, n_dirs=1000, bias: bool = True,
+                 device=None, dtype=None) -> None:
+        factory_kwargs = {'device': device, 'dtype': dtype}
+        super().__init__()
+        self.V = None
+        self.Lambda = None
+        self.n_dirs = n_dirs
+        self.mu_R = None
+        self.in_features = in_features
+        self.out_features = out_features
+        self.weight = Parameter(torch.empty((out_features, in_features), **factory_kwargs))
+        self.bias = Parameter(torch.empty(out_features, **factory_kwargs))
+        self.old_top_vector = None
+        self.reset_parameters()
+
+    def reset_parameters(self) -> None:
+        # Setting a=sqrt(5) in kaiming_uniform is the same as initializing with
+        # uniform(-1/sqrt(in_features), 1/sqrt(in_features)). For details, see
+        # https://github.com/pytorch/pytorch/issues/57109
+        self.reset_mask()
+        init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+        fan_in, _ = init._calculate_fan_in_and_fan_out(self.weight)
+        bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
+        init.uniform_(self.bias, -bound, bound)
+    
+    def set_n_dirs(self, n_dirs):
+        self.n_dirs = n_dirs
+        self.reset_mask()
+    
+    def set_singular(self, R: Tensor) -> None:
+        # Calculate  Eigenvectors
+        _, S, self.V = torch.pca_lowrank(R, center=True, q=self.n_dirs) # Right singular vectors of R
+        cos = nn.CosineSimilarity(dim=0, eps=1e-6)
+        if self.old_top_vector is not None:
+            sim = cos(self.old_top_vector, self.V[0])
+            print(f"Current top 5 Singular Values: {S[:5]}")
+            print(f"Similarity top1 : {sim}")
+        self.old_top_vector = self.V[0]
+        self.V = self.V.cuda()
+        self.V_inv = torch.linalg.pinv(self.V).cuda()                   # Pseudoinverse of V
+        self.mu_R = R.mean(dim=0).cuda()
+        self.Lambda = torch.diagflat(self.mask).cuda()
+        return S.cpu(), self.V.clone().cpu()
+        #print(self.V.shape,self.V_inv.shape,self.Lambda.shape)
+        
+    def reset_singular(self) -> None:
+        self.V = None
+        self.Lambda = None
+        self.V_inv = None
+        self.mu_R = None
+
+    def dropout_dim(self, indices=None):
+        if indices is None: # Randomly drop one index
+            indices =  [randint(0, self.n_dirs)] # Choose a random dimension
+        self.mask[indices] = 0
+        self.Lambda = torch.diagflat(self.mask).cuda()
+
+    def reset_mask(self):
+        self.mask = torch.ones(self.n_dirs)
+        self.Lambda = torch.diagflat(self.mask)
+        
+    def forward(self, input: Tensor) -> Tensor:
+        if self.V is not None: # I want to remove some of my right singular directions!
+            new_weights = (((self.V @ self.Lambda) @ self.V_inv) @ self.weight.T).T
+            new_bias = (-self.mu_R*(new_weights - self.weight)).sum() + self.bias
+            return F.linear(input, new_weights, new_bias)
+        else: # I'm just a regular linear layer
+            return F.linear(input, self.weight, self.bias)
+
+    def extra_repr(self) -> str:
+        return f'in_features={self.in_features}, out_features={self.out_features}, bias={self.bias is not None}'
 
 class BasicBlock(nn.Module):
     """Basic Block for resnet 18 and resnet 34
@@ -200,7 +285,7 @@ class SimpleCNN(nn.Module):
         layer.add_module('flatten', nn.Flatten())
         self.features = layer
 
-        self.fc = nn.Sequential(nn.Linear(2688*N, num_classes))
+        self.fc = SVDropClassifier(2688*N, num_classes)
         '''for lin in [lin1, lin2, lin3]:
             nn.init.xavier_uniform_(lin.weight)
             nn.init.zeros_(lin.bias)'''

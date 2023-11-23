@@ -5,7 +5,7 @@ from dataset import make_dataloaders, get_spurious_samples
 from params import *                        # Experiment parameters 
 from models import create_model, restart_model
 from torch.optim import SGD, Adam
-from train import train, evaluate_splits
+from train import train, evaluate_splits, get_reps
 from utils import *
 from time import time
 from masks import generate_mask, forget_model
@@ -79,15 +79,31 @@ def main(dls):
     #    show_data(dls, envs, splits)
     # Initialize stored metrics
     all_metrics = {'task_env1': dict(), 'eval': dict()}
+
     for k in all_metrics.keys():
         for split in ["train", "val"]:
             for m in args.metrics:
                 all_metrics[k][f"{split}_{m}"] = []
+    
+
     # Evaluation before training
     metrics = evaluate_splits(model, dls['eval'], args, "task")
     for ds_name, m in metrics.items():
         all_metrics[ds_name] = update_metrics(all_metrics[ds_name], m)
     # Training starts
+
+    if args.base_method == "svdrop":
+        all_metrics['task_env1']['singular'] = []
+        # get representations R
+        # calculate representations
+        dl = dls['task']['env1']['train']
+        R = get_reps(model, dl)
+        # apply to model
+        model.fc.set_n_dirs(1000)
+        S,_ = model.fc.set_singular(R)
+        # dropout first dimension
+        # model.fc.dropout_dim([0]) # dropout first singular vector!
+        all_metrics['task_env1']['singular'].append(S)
     args.task_iter = 1
     args.play_iter = 1
     grads = []
@@ -105,6 +121,8 @@ def main(dls):
 
             dl = dls['task']['env1']['train']
             model, args, train_metrics = train(model, dl, opt, args,'task',args.save_grads)
+
+
             # Evaluate on all environments/splits!
             #if args.save_model:
             #    save_model(args, model)
@@ -125,6 +143,17 @@ def main(dls):
                                   'acc':  min_val_acc,
                                   #"args": args,
                                   'model': model.state_dict()}
+            if args.base_method == "svdrop":
+                # get representations R
+                # calculate representations
+                R = get_reps(model, dl)
+                # apply to model
+                model.fc.set_n_dirs(1000)
+                S,_ = model.fc.set_singular(R)
+                # dropout first dimension
+                model.fc.dropout_dim([0]) # dropout first singular vector!
+
+                all_metrics['task_env1']['singular'].append(S)
             # best_model = model.clone()
 
         if 'forget' in args.mode and args.task_iter <= training_schedule[-1]:
