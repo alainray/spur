@@ -33,7 +33,7 @@ def get_dataset(args, split, corr, **kwargs):
         datapath += f"/MNIST_CIFAR_{corr}.pth"
     else:
         datapath += f"/MNIST_CIFAR_binary_{corr}.pth"
-    print(datapath)
+    #print(datapath)
     a = mnist_cifar(datapath, split=split)
     return  a
 
