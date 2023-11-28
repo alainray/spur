@@ -225,16 +225,13 @@ def update_metrics(all, new):
         all[k].append(v)
     return all
 
-def save_stats(args, metrics):
+def save_stats(args, metrics, root="stats"):
     def make_human_readable_name(args):
         return "_".join([str(args.exp_id), make_dataset_id(args.task_datasets['env1']),str(args.seed),args.base_method])
     filename = make_human_readable_name(args)
-    torch.save(metrics, join("stats",filename))
+    torch.save(metrics, join(root,filename))
 
-def load_model(model, weights_path):
-    w = torch.load(weights_path)
-    model.load_state_dict(w)
-    return model
+
 
 def freeze_model(args, model): # Freeze all layers except classifier
     # Freeze all the layers in the features module
