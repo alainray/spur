@@ -93,7 +93,7 @@ def train(model, dl, opt, args, caption='', return_grads=False):
         data = {'input': x, 'labels': y, 'groups': g}
         model, result = run_train_iteration(data, model, opt, args)
         # Update on progress
-        print(f"\r{n_batch+1}/{total_batches} ({100*(n_batch+1)/(total_batches):.2f}%)", end="")    
+        #print(f"\r{n_batch+1}/{total_batches} ({100*(n_batch+1)/(total_batches):.2f}%)", end="")    
         # Do we need to stop prematurely?
         if args.max_cur_iter == args[f'{mode}_iter']:
             args[f'{mode}_iter'] +=1
@@ -130,8 +130,9 @@ def evaluate_splits(model, dls, args, stage):
         all_results[ds_name] = results
 
     pretty_print(all_results,args,stage)
-    for ds_name, results in all_results.items():
-        args.exp.log_metrics(results, prefix=ds_name, step=args[f'task_iter'], epoch=args[f'task_iter'])
+    if args.use_comet:
+        for ds_name, results in all_results.items():
+            args.exp.log_metrics(results, prefix=ds_name, step=args[f'task_iter'], epoch=args[f'task_iter'])
     return all_results
 
 #@timing
@@ -153,6 +154,7 @@ def evaluate(args, model, dl, caption='train', show=True):
     evaluate_result['logits'] =  torch.stack(evaluate_result['logits'])
     evaluate_data['labels'] = torch.stack(evaluate_data['labels'])
     evaluate_data['groups'] =torch.stack(evaluate_data['groups'])
+    #print(evaluate_result['logits'].shape)
     #print(evaluate_result['logits'].shape)
     #print(evaluate_data['labels'].shape)
     #print(evaluate_data['groups'].shape)
