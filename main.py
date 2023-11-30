@@ -3,7 +3,7 @@ import torch
 import argparse
 from dataset import make_dataloaders, get_spurious_samples
 from params import *                        # Experiment parameters 
-from models import create_model, restart_model
+from models import create_model, restart_model, load_model
 from torch.optim import SGD, Adam
 from train import train, evaluate_splits, get_reps
 from utils import *

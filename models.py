@@ -19,6 +19,11 @@ def create_model(args):
     archs.densenet = densenet
     return archs[args.model](args)
 
+def load_model(model, weights_path):
+    w = torch.load(weights_path)
+    model.load_state_dict(w['model'])
+    return model
+
 def densenet(args, in_channels=3, n_classes=1):
     model = densenet121(weights=None)
 
