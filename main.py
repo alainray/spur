@@ -102,7 +102,7 @@ def main(dls):
         model.fc.set_n_dirs(1000)
         S,_ = model.fc.set_singular(R)
         # dropout first dimension
-        # model.fc.dropout_dim([0]) # dropout first singular vector!
+        #model.fc.dropout_dim([0]) # dropout first singular vector!
         all_metrics['task_env1']['singular'].append(S)
     args.task_iter = 1
     args.play_iter = 1
@@ -151,7 +151,7 @@ def main(dls):
                 model.fc.set_n_dirs(1000)
                 S,_ = model.fc.set_singular(R)
                 # dropout first dimension
-                model.fc.dropout_dim([0]) # dropout first singular vector!
+                model.fc.dropout_dim([0], p =args.svdropout_p) # dropout first singular vector!
 
                 all_metrics['task_env1']['singular'].append(S)
             # best_model = model.clone()
@@ -220,6 +220,7 @@ if __name__ == '__main__':
     parser.add_argument('--forget_asc', type=int, help='Value of forget_asc', required=False, default=0)
     parser.add_argument('--forget_threshold', type=float, help='Value of forget_t', required=False,default=0)
     parser.add_argument('--env', type=str, help='Environment variable', required=False, default='nobg')
+    parser.add_argument('--svdropout_p', type=float, help='-Probability of SVDrop', required=False, default=1.0)
 
     # Parse command-line arguments
     input_args = parser.parse_args()

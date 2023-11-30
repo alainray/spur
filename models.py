@@ -9,7 +9,7 @@ from torch.nn.parameter import Parameter
 import torch.nn.init as init
 import math
 from torch.nn import functional as F
-from random import randint
+from random import randint, random
 
 def create_model(args):
     archs = edict()
@@ -92,11 +92,11 @@ class SVDropClassifier(nn.Module):
         self.V_inv = None
         self.mu_R = None
 
-    def dropout_dim(self, p=1.0, indices=None):
+    def dropout_dim(self, indices=None,p=1.0):
         if indices is None: # Randomly drop one index
             indices =  [randint(0, self.n_dirs)] # Choose a random dimension
         for index in indices:
-            if random.random() <= p: # Turn off direction with probability p
+            if random() <= p: # Turn off direction with probability p
                 self.mask[index] = 0
         self.Lambda = torch.diagflat(self.mask).cuda()
 
