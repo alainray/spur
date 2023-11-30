@@ -87,10 +87,12 @@ class SVDropClassifier(nn.Module):
         self.V_inv = None
         self.mu_R = None
 
-    def dropout_dim(self, indices=None):
+    def dropout_dim(self, p=1.0, indices=None):
         if indices is None: # Randomly drop one index
             indices =  [randint(0, self.n_dirs)] # Choose a random dimension
-        self.mask[indices] = 0
+        for index in indices:
+            if random.random() <= p: # Turn off direction with probability p
+                self.mask[index] = 0
         self.Lambda = torch.diagflat(self.mask).cuda()
 
     def reset_mask(self):
