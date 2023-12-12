@@ -1,20 +1,18 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
 from easydict import EasyDict  as edict
 import torch
 import sys
 from torch.optim import Adam
 from tqdm.notebook import tqdm
+sys.path.append('/media/alain/Data/Tesis/spur/')
 from dataset import make_dataloaders
-from train import train,evaluate_splits
+from train import train,evaluate_splits, run_eval_iteration
 from models import create_model
 from numpy.random import choice
 from torch.utils.data import Subset, DataLoader
 from utils import update_metrics, save_stats
+from os.path import join
+from os import listdir
+
 def create_args(exp_params):
     args = edict()
     task_args = edict()
@@ -27,7 +25,7 @@ def create_args(exp_params):
     
     # ---------- TRAINING PARAMS ----------------
     args.load_pretrained = True                                    # Do we start with a pretrained model or not 
-    args.pretrained_path = f"models/scnn_{exp_params['method']}_{exp_params['dataset']}_{exp_params['corr']}_True_{exp_params['seed']}_best_.pth" # path to pretrained model
+    args.pretrained_path = f"../models/scnn_{exp_params['method']}_{exp_params['dataset']}_{exp_params['corr']}_True_{exp_params['seed']}_best_.pth" # path to pretrained model
     task_args.n_interventions = 0                                  # Amount of times we stop training before applying intervention (forgetting, playing)
     task_args.total_iterations = exp_params['max_iters']                         # 9452 = 1 epoch
     
@@ -54,8 +52,8 @@ def create_args(exp_params):
     # --------- DATASET -----------------------------------------------------------------------------
     args.eval_datasets = dict()                                    # Which datasets to evaluate
     args.task_datasets = dict()     
-    args.dataset_paths = {'synmnist': "../datasets/SynMNIST",      # Path for each dataset
-                          'mnistcifar': "../datasets/MNISTCIFAR"}
+    args.dataset_paths = {'synmnist': "../../datasets/SynMNIST",      # Path for each dataset
+                          'mnistcifar': "../../datasets/MNISTCIFAR"}
     args.task_datasets['env1'] = {'name': exp_params['dataset'], 'corr': float(exp_params['corr'])
                                   , 'splits': ['train', 'test'], 'bs': 10000, "binarize": True}
     
@@ -67,6 +65,7 @@ def create_args(exp_params):
     args.metrics = ['acc', 'loss','worst_group_loss', 'worst_group_acc', "best_group_loss", "best_group_acc"]
     # --------------- Consolidate all settings on args --------------------
     args.task_args = task_args
+    args.svdropout_p = 0.0
     return args
 
 def load_model(model, weights_path):
@@ -84,10 +83,6 @@ def load_model(model, weights_path):
     return model
 
 
-# In[2]:
-
-
-
 # load a model
 # load balanced dataset
 # define dataset size (hyperparameter)
@@ -95,7 +90,7 @@ def load_model(model, weights_path):
 # report metrics (worst_group_*, best_group_*, acc, loss)
 # create table with data at the method/dataset/spur/seed level then aggregate metho/dataset/spur
 
-def run_experiment(exp_params):
+def run_dfr_experiment(exp_params):
     print(exp_params)
     all_metrics = {'task_env1': dict(), 'eval': dict()}
     args = create_args(exp_params)
@@ -124,12 +119,41 @@ def run_experiment(exp_params):
     
     return args, all_metrics # {"worst_group}
 
+def run_jtt_experiment(exp_params):
+    print(exp_params)
+    all_metrics = {'task_env1': dict(), 'eval': dict()}
+    args = create_args(exp_params)
+    for k in all_metrics.keys():
+        for split in ["train", "val", "test"]:
+            for m in args.metrics:
+                all_metrics[k][f"{split}_{m}"] = []
+    
+    # define args for dataloader
+    model=create_model(args).cuda()
+    model = load_model(model, args.pretrained_path).cuda()
+    opt = Adam(model.parameters(), lr=0.001)#),momentum=0.9,weight_decay=0.01)
+    # reload datasets
+    dls = make_dataloaders(args)
+    dl = dls['task']['env1']['train']              #train on balanced version of dataset
+    n_samples = len(dl.dataset)
+    # run evaluation iteration on train set
+    for n_batch, (x, y, g) in enumerate(dl):
+        data = {'input': x, 'labels': y, 'groups': g}
+    logits = run_eval_iteration(data,model,args)
+    incorrect = (logits['logits'].squeeze() >0.5) != y
+    weights = torch.ones_like(incorrect).float().cuda()
+    weights[incorrect] = exp_params['lambda']
+    print(f"N# of Incorrect samples is: {incorrect.sum():0d}/9000")
+    for i in tqdm(range(args.task_args.total_iterations),total=args.task_args.total_iterations):
+        model,_,_ = train(model,dl,opt,args,weights=weights)
+        metrics = evaluate_splits(model,dls['eval'],args,"task")
+        # accumulate metrics
+        for ds_name, m in metrics.items():
+            all_metrics[ds_name] = update_metrics(all_metrics[ds_name], m)
+    
+    return args, all_metrics # {"worst_group}
 
-# In[ ]:
 
-
-from os.path import join
-from os import listdir
 def choose_experiments(method, model_dir = "models"):
     def make_file_dict(f):
         f = f.split("_")
@@ -146,14 +170,26 @@ def choose_experiments(method, model_dir = "models"):
             files.append(make_file_dict(f))
     return files
 
-exps = choose_experiments("erm", model_dir="models")
-max_iters = 2000
+exps = choose_experiments("jtt", model_dir="../models")
+max_iters = 3
 size_of_ft = 1000
-for size_of_ft in [10, 50, 100, 200, 500, 1000]:
-    for e in tqdm(exps,total=len(exps)):
-        e['max_iters'] = max_iters
-        e['ft_size'] = size_of_ft
-        print(e)
-        args, results = run_experiment(e)
-        args.base_method +=f"_ft_{size_of_ft}"
-        save_stats(args,results,root="stats")
+
+method = "jtt"
+
+if method == "dfr":
+    for size_of_ft in [10, 50, 100, 200, 500, 1000]:
+        for e in tqdm(exps,total=len(exps)):
+            e['max_iters'] = max_iters
+            e['ft_size'] = size_of_ft
+            args, results = run_dfr_experiment(e)
+            args.base_method +=f"_ft_{size_of_ft}"
+            save_stats(args,results,root="../stats")
+elif method == "jtt":
+    for lmbda in [5,10,15,20]:
+        for e in tqdm(exps,total=len(exps)): 
+            e['max_iters'] = max_iters
+            e['lambda'] = lmbda
+            args, results = run_jtt_experiment(e)
+            args.base_method = f"{e['method']}_{lmbda}"
+            print(args.base_method)
+            save_stats(args,results,root="../stats")
