@@ -35,12 +35,15 @@ def reweight(g_losses, g_counts):
     p = (1/g_counts).cuda()
     return (p * g_losses).sum()
 
-def run_train_iteration(data, model, opt, args):
+def run_train_iteration(data, model, opt, args, weights=None):
+
 
     # Send data to GPU
     x = data['input'].cuda()
     y = data['labels'].cuda() if args.output_dims > 1 else data['labels'].float().cuda()
     g = data['groups'].cuda()
+
+
 
     # Output metrics definition
     metrics = {'group_loss': None, 
@@ -52,6 +55,11 @@ def run_train_iteration(data, model, opt, args):
     # Calculate loss
     l_f = get_loss_fn(args)
     losses = l_f(logits.squeeze(), y)
+
+    if weights is None:
+        weights = torch.ones_like(losses)
+    # reweight loss     
+    losses *= weights
     loss = get_grouped_loss(args, losses, g) # Apply any changes to the loss based on method
     mean_loss = loss.mean()
     # Backpropagation Update
@@ -79,7 +87,7 @@ def run_eval_iteration(data, model, args):
 
 # Metrics
     
-def train(model, dl, opt, args, caption='', return_grads=False):
+def train(model, dl, opt, args, caption='', return_grads=False,weights=None):
     mode = 'play' if 'play' in caption else 'task'
 
     #metrics = {'grads': None}#'loss': None, 'acc': None}
@@ -91,7 +99,7 @@ def train(model, dl, opt, args, caption='', return_grads=False):
     for n_batch, (x, y, g) in enumerate(dl):
         bs = x.shape[0]
         data = {'input': x, 'labels': y, 'groups': g}
-        model, result = run_train_iteration(data, model, opt, args)
+        model, result = run_train_iteration(data, model, opt, args, weights=weights)
         # Update on progress
         #print(f"\r{n_batch+1}/{total_batches} ({100*(n_batch+1)/(total_batches):.2f}%)", end="")    
         # Do we need to stop prematurely?

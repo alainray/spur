@@ -190,19 +190,12 @@ def make_dataset_id(ds_dict):
     elif ds_dict['name'] == 'mnistcifar':
         return ds_dict['name'] + "_" + str(ds_dict['corr']) + "_" + str(ds_dict['binarize'])
 
-def save_best_model(args, model_dict):
+def save_model(args, model_dict):
 
     model_id = make_dataset_id(args.task_datasets['env1'])
     path = f'{args.save_model_folder}/{args.model}_{args.base_method}_{model_id}_{args.seed}_best_{args.save_model_path}'
     torch.save(model_dict, path)
-
-def save_model(args, model, modifier=""):
-
-    model_id = make_dataset_id(args.task_datasets['env1'])
-    frozen = "frz" if args.frozen_features else 'nofrz'
-    path = f'{args.save_model_folder}/{args.model}_{model_id}_{args.base_method}_{frozen}_{args.task_iter}_{args.seed}_{args.save_model_path}'
-    torch.save(model.state_dict(), path)
-
+    
 def make_experiment_id():
     file_path = "exp_ids.txt"
     if os.path.isfile(file_path):
@@ -227,7 +220,7 @@ def update_metrics(all, new):
 
 def save_stats(args, metrics, root="stats"):
     def make_human_readable_name(args):
-        return "_".join([str(args.exp_id), make_dataset_id(args.task_datasets['env1']),str(args.seed),args.base_method,str(args.svdropout_p)])
+        return "_".join([str(args.exp_id), make_dataset_id(args.task_datasets['env1']),str(args.seed),args.base_method])
     filename = make_human_readable_name(args)
     torch.save(metrics, join(root,filename))
 

@@ -92,7 +92,7 @@ def main(dls):
         all_metrics[ds_name] = update_metrics(all_metrics[ds_name], m)
     # Training starts
 
-    if args.base_method == "svdrop":
+    if "svdrop" in args.base_method:
         all_metrics['task_env1']['singular'] = []
         # get representations R
         # calculate representations
@@ -104,6 +104,7 @@ def main(dls):
         # dropout first dimension
         #model.fc.dropout_dim([0]) # dropout first singular vector!
         all_metrics['task_env1']['singular'].append(S)
+        args.base_method = f"svdrop_{args.svdropout_p}"
     args.task_iter = 1
     args.play_iter = 1
     grads = []
@@ -112,6 +113,7 @@ def main(dls):
     min_val_acc= 0.0
     best_model = None
     metric_for_best = "worst_group"
+
     for i, iters in enumerate(training_schedule):
         args.max_cur_iter = iters
 
@@ -130,10 +132,12 @@ def main(dls):
             metrics = evaluate_splits(model, dls['eval'], args, "task")
             for ds_name, m in metrics.items():
                 all_metrics[ds_name] = update_metrics(all_metrics[ds_name], m)
+            
+            current_loss = metrics['eval'][f'val_{metric_for_best}_loss']
+            current_acc = metrics['eval'][f'val_{metric_for_best}_acc']
+           
             if args.save_best:
-   
-                current_loss = metrics['eval'][f'val_{metric_for_best}_loss']
-                current_acc = metrics['eval'][f'val_{metric_for_best}_acc']
+
                 if current_acc > min_val_acc:
                     min_val_acc = current_acc
                     print(f"New best model! Best val {metric_for_best} acc is now: {100*min_val_acc:.2f}% and loss: {current_loss:.3f}")
@@ -221,6 +225,7 @@ if __name__ == '__main__':
     parser.add_argument('--forget_threshold', type=float, help='Value of forget_t', required=False,default=0)
     parser.add_argument('--env', type=str, help='Environment variable', required=False, default='nobg')
     parser.add_argument('--svdropout_p', type=float, help='-Probability of SVDrop', required=False, default=1.0)
+    parser.add_argument('--total_iterations', type=int, help='Number of interventions', required=False, default=2000)
 
     # Parse command-line arguments
     input_args = parser.parse_args()
@@ -231,6 +236,7 @@ if __name__ == '__main__':
         
     args.forget_asc = bool(args.forget_asc)
     task_args.n_interventions = args.n_interventions
+    task_args.total_iterations = args.total_iterations
     env = input_args.env
     spur = input_args.spur
 
@@ -262,9 +268,12 @@ if __name__ == '__main__':
     model, best_model = main(dls)
     
     if args.save_best:
-        save_best_model(args, best_model)
+        save_model(args, best_model)
     if args.save_model:
-        save_model(args, model, spur)
+        save_model(args, {'iter': args.task_iter-1, 
+                          'loss': "N/A",
+                          'acc':  "N/A",
+                          'model': model.state_dict()})
     end = time()
 
     print(f"Full training iteration took {end-start:.1f}s")
