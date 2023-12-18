@@ -5,6 +5,7 @@ from torchvision.transforms import Resize
 import torch
 import datasets.camelyon as camelyon
 import datasets.mnistcifar as mc
+import datasets.waterbirds as wb
 # Generic dataset
 
 # Dataset options: 
@@ -14,6 +15,7 @@ dataset_function = {
     'synmnist': synbols.get_splits,
     'camelyon': camelyon.get_splits,
     'mnistcifar': mc.get_splits,
+    'waterbirds': wb.get_splits,
 }
 
 def get_spurious_samples():
