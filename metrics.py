@@ -17,7 +17,7 @@ def group_data(data, groups=None):
         groups = torch.zeros_like(data)
     unique_values, inverse_indices = torch.unique(groups, return_inverse=True)       # Remap group values to the 0 to N_groups - 1 range
     mapping_tensor = torch.arange(len(unique_values))                                # Create a mapping tensor from unique values to indices
-    groups = mapping_tensor[inverse_indices]                                         # Map the original tensor to indices using the inverse_indices
+    groups = mapping_tensor[inverse_indices.cpu()]                                   # Map the original tensor to indices using the inverse_indices
     num_classes = groups.max() + 1                                                   # Determine the number of classes or categories (assuming indices are 0-based)                                    # Create an empty tensor to store the grouped losses
     _, group_counts = groups.unique(return_counts=True)                              # Calculate the unique group values and their counts
     one_hot_matrix = torch.eye(num_classes)[groups]                                  # Create mask for losses
