@@ -34,7 +34,7 @@ args.use_comet = False
 
 
 # --------------- MODEL ---------------------
-args.model = 'scnn'
+args.model = 'resnet50'
 args.hidden_dim = 100
 args.output_dims = 1  # Equals number of classes
 
@@ -48,7 +48,7 @@ task_args.n_interventions = 50                                 # Amount of times
 task_args.total_iterations = 5                                 # 9452 = 1 epoch
 
 # ---------- MODEL PERSISTENCE --------------
-args.save_model = False                                        # Save last model
+args.save_model = True                                        # Save last model
 args.save_best = True                                          # Save best performing model
 args.save_stats = True                                         # Save final performance metrics
 args.save_model_folder = 'models'                              # Folder where models are stored 
@@ -87,9 +87,10 @@ play_args.dataset = {'name': 'synmnist', 'p': 0.95 , 'bg': 'nobg', 'splits': ['t
 args.eval_datasets = dict()                                    # Which datasets to evaluate
 args.task_datasets = dict()     
 args.dataset_paths = {'synmnist': "../datasets/SynMNIST",      # Path for each dataset
-                      'mnistcifar': "../datasets/MNISTCIFAR"}
+                      'mnistcifar': "../datasets/MNISTCIFAR",
+                      "waterbirds": "../datasets/waterbird_complete95_forest2water2"}
 #task_args.dataset = {'name': 'mnistcifar', 'corr': 0.75, 'splits': ['train','id', 'val'], 'bs': 10000, "binarize": True}
-args.task_datasets['env1'] = {'name': 'mnistcifar', 'corr': 0.0, 'splits': ['train', 'val'], 'bs': 10000, "binarize": True}
+args.task_datasets['env1'] = {'name': 'waterbirds', 'corr': 0.0, 'splits': ['train'], 'bs': 32, "binarize": True}
 #args.task_datasets['env2'] = {'name': 'mnistcifar', 'corr': 0.9, 'splits': ['train', 'val'], 'bs': 10000, "binarize": True}
 
 if 'play' in args.mode:
@@ -97,7 +98,7 @@ if 'play' in args.mode:
 # All datasets listed on eval_datasets will be evaluated. One dataset per key, however, each dataset may evaluate multiple splits.
 for ds_id, ds in args.task_datasets.items():
     args.eval_datasets[f'task_{ds_id}'] = ds 
-args.eval_datasets['eval'] = {'name': 'mnistcifar', 'corr': 0.0, 'splits': ['val'], 'bs': 50000, "binarize": True}
+args.eval_datasets['eval'] = {'name': 'waterbirds', 'corr': 0.0, 'splits': ['val'], 'bs': 128, "binarize": True}
 play_args.duplicate = False                                     # PROBABLY NEVER USED
 # -------- METRICS -----------------------------------------------------------------------------
 args.metrics = ['acc', 'loss','worst_group_loss', 'worst_group_acc', "best_group_loss", "best_group_acc"]

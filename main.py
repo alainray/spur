@@ -70,7 +70,6 @@ def main(dls):
     
     model.comet_experiment_key = exp.get_key() # To retrieve existing experiment
     args.exp = exp
-    args.exp_id = make_experiment_id()
     # Training loop
     args.task_iter = 0
     args.play_iter = 0

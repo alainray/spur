@@ -16,7 +16,7 @@ def get_grouped_loss(args, losses, groups):
     g_losses, g_counts = group_data(losses, groups)
 
     if args.base_method == "gdro":
-        loss = group_dro(g_losses, 0.001) # change for something like base_method_params[base_method]
+        loss = group_dro(g_losses, g_counts, temp = 0.001, adj = args.gdro_adj) # change for something like base_method_params[base_method]
         loss /= bs
     elif args.base_method == "rw":
         loss = reweight(g_losses, g_counts)
@@ -26,9 +26,15 @@ def get_grouped_loss(args, losses, groups):
     return loss
 
 
-def group_dro(g_losses, temp = 1.0):
+def group_dro(g_losses, g_counts, temp = 1.0, adj = None):
+
+    if torch.all(adj>0):
+        g_losses += adj/torch.sqrt(g_counts)
+    
     p = softmax(temp*g_losses, dim=1).cuda()
     print(p)
+    #if self.normalize_loss:
+    #    adjusted_loss = adjusted_loss/(adjusted_loss.sum())
     return (p * g_losses).sum()
 
 def reweight(g_losses, g_counts):

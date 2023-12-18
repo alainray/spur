@@ -189,6 +189,8 @@ def make_dataset_id(ds_dict):
         return ds_dict['name'] + '_' + str(ds_dict['p']) + '_' + ds_dict['bg'] + '_' + ('bs' if ds_dict['baseline'] else 'nobs')
     elif ds_dict['name'] == 'mnistcifar':
         return ds_dict['name'] + "_" + str(ds_dict['corr']) + "_" + str(ds_dict['binarize'])
+    else:
+        return ds_dict['name'] + "_" + "0.9" + "_" + str(ds_dict['binarize'])
 
 def save_model(args, model_dict):
 
@@ -220,7 +222,7 @@ def update_metrics(all, new):
 
 def save_stats(args, metrics, root="stats"):
     def make_human_readable_name(args):
-        return "_".join([str(args.exp_id), make_dataset_id(args.task_datasets['env1']),str(args.seed),args.base_method])
+        return "_".join(["X", make_dataset_id(args.task_datasets['env1']),str(args.seed),args.base_method])
     filename = make_human_readable_name(args)
     torch.save(metrics, join(root,filename))
 

@@ -3,7 +3,7 @@ from params import args
 from easydict import EasyDict  as edict
 import torch
 import torch.nn as nn
-from torchvision.models import densenet121
+from torchvision.models import densenet121, resnet50, ResNet50_Weights
 from torch import Tensor
 from torch.nn.parameter import Parameter
 import torch.nn.init as init
@@ -11,9 +11,18 @@ import math
 from torch.nn import functional as F
 from random import randint, random
 
+def resnet50_v2(args):
+    model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
+    # Replace AdaptiveAvgPool2d to be able to use deterministic 
+    # algorithms for reproducibility
+    model.avgpool = nn.AvgPool2d(7) 
+    fc = nn.Linear(2048, args.output_dims)
+    model.fc = fc
+    return model
+
 def create_model(args):
     archs = edict()
-    archs.resnet18 = resnet18
+    archs.resnet50 = resnet50_v2
     archs.scnn = simplecnn
     archs.mlp = MLP
     archs.densenet = densenet
@@ -353,7 +362,7 @@ def restart_model(args, model):
 if __name__ == '__main__':
     #from params import args
     N = 2
-    x = torch.rand(10,3,64,32)
+    x = torch.rand(10,3,224,224)
     #args = edict()
     args.model = "densenet121"
     args.n_layers = 2     
@@ -368,7 +377,11 @@ if __name__ == '__main__':
     #model.classifier = torch.nn.Linear(num_ftrs, 1)
 
     #print(model(x).shape)
-    model = SimpleCNN([32,64,128],1,add_pooling=False)
+    model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
+   #nn.AvgPool2d(6)
+    model.fc = nn.Identity()
+    print(model)
+    #model = SimpleCNN([32,64,128],1,add_pooling=False)
     #print(model.features.fc1.weight[0][0])
     #print(model.conv5_x[1].residual_function[0].weight[0][0][0])
     #print(model.features.fc.weight[0][0])
