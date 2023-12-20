@@ -80,12 +80,13 @@ def main(dls):
     all_metrics = {'task_env1': dict(), 'eval': dict()}
 
     for k in all_metrics.keys():
-        for split in ["train", "val"]:
+        for split in ["train", "val","test"]:
             for m in args.metrics:
                 all_metrics[k][f"{split}_{m}"] = []
     
 
     # Evaluation before training
+    print("Evaluating untrained model!")
     metrics = evaluate_splits(model, dls['eval'], args, "task")
     for ds_name, m in metrics.items():
         all_metrics[ds_name] = update_metrics(all_metrics[ds_name], m)
@@ -104,6 +105,8 @@ def main(dls):
         #model.fc.dropout_dim([0]) # dropout first singular vector!
         all_metrics['task_env1']['singular'].append(S)
         args.base_method = f"svdrop_{args.svdropout_p}"
+    elif "gdro" in args.base_method:
+        args.base_method += f"_{args.gdro_adj}"
     args.task_iter = 1
     args.play_iter = 1
     grads = []
@@ -223,7 +226,8 @@ if __name__ == '__main__':
     parser.add_argument('--forget_asc', type=int, help='Value of forget_asc', required=False, default=0)
     parser.add_argument('--forget_threshold', type=float, help='Value of forget_t', required=False,default=0)
     parser.add_argument('--env', type=str, help='Environment variable', required=False, default='nobg')
-    parser.add_argument('--svdropout_p', type=float, help='-Probability of SVDrop', required=False, default=1.0)
+    parser.add_argument('--svdropout_p', type=float, help='Probability of SVDrop', required=False, default=1.0)
+    parser.add_argument('--gdro_adj', type=float, help='Generalization adjustment for gdro', required=False, default=0.0)
     parser.add_argument('--total_iterations', type=int, help='Number of interventions', required=False, default=2000)
 
     # Parse command-line arguments
