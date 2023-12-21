@@ -60,8 +60,11 @@ def main(dls):
     if args.frozen_features:
         model = freeze_model(args, model).cuda()
         model = restart_model(args, model)
-
-    opt = Adam(model.parameters(), lr=0.001)#),momentum=0.9,weight_decay=0.01)
+    optimizer = {"adam": Adam, "sgd": SGD }
+    if args.optim == "sgd":
+        opt = SGD(model.parameters(), lr=args.lr,momentum=args.momentum, weight_decay=args.wd)
+    elif args.optim == "adam":
+        opt = Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
     opt_play  = Adam(model.parameters(), lr=0.001)
 
     # Comet.ml logging
@@ -73,7 +76,7 @@ def main(dls):
     # Training loop
     args.task_iter = 0
     args.play_iter = 0
-
+    args.base_method += f"_{args.lr}_{args.wd}"
     #if args.showData:
     #    show_data(dls, envs, splits)
     # Initialize stored metrics
@@ -104,7 +107,7 @@ def main(dls):
         # dropout first dimension
         #model.fc.dropout_dim([0]) # dropout first singular vector!
         all_metrics['task_env1']['singular'].append(S)
-        args.base_method = f"svdrop_{args.svdropout_p}"
+        args.base_method += f"_{args.svdropout_p}"
     elif "gdro" in args.base_method:
         args.base_method += f"_{args.gdro_adj}"
     args.task_iter = 1
@@ -229,7 +232,10 @@ if __name__ == '__main__':
     parser.add_argument('--svdropout_p', type=float, help='Probability of SVDrop', required=False, default=1.0)
     parser.add_argument('--gdro_adj', type=float, help='Generalization adjustment for gdro', required=False, default=0.0)
     parser.add_argument('--total_iterations', type=int, help='Number of interventions', required=False, default=2000)
-
+    parser.add_argument('--lr', type=float, help='Learning rate', required=False, default=0.001)
+    parser.add_argument('--wd', type=float, help='L2 Regularization (Weight Decay)', required=False, default=0.001)
+    parser.add_argument('--momentum', type=float, help='Momentum for optimizer', required=False, default=0.9)
+    parser.add_argument('--optim', type=str, help='Optimizer (adam/sgd)', required=False, default="adam")
     # Parse command-line arguments
     input_args = parser.parse_args()
 

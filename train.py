@@ -18,7 +18,7 @@ def get_grouped_loss(args, losses, groups):
     if "gdro" in args.base_method:
         loss = group_dro(g_losses, g_counts, temp = 0.01, adj = args.gdro_adj) # change for something like base_method_params[base_method]
         loss /= bs
-    elif args.base_method == "rw":
+    elif "rw" in args.base_method:
         loss = reweight(g_losses, g_counts)
         loss /= bs
     else:
