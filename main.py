@@ -89,10 +89,10 @@ def main(dls):
     
 
     # Evaluation before training
-    print("Evaluating untrained model!")
-    metrics = evaluate_splits(model, dls['eval'], args, "task")
-    for ds_name, m in metrics.items():
-        all_metrics[ds_name] = update_metrics(all_metrics[ds_name], m)
+    #print("Evaluating untrained model!")
+    #metrics = evaluate_splits(model, dls['eval'], args, "task")
+    #for ds_name, m in metrics.items():
+    #    all_metrics[ds_name] = update_metrics(all_metrics[ds_name], m)
     # Training starts
 
     if "svdrop" in args.base_method:

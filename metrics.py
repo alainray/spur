@@ -59,8 +59,9 @@ def accuracy(data, metrics, args, mode="total"):
 '''       
 def mean_accuracy_N(logits, targets, groups): # For multiple output dimensions
     _, predicted_labels = torch.max(logits, dim=1)
-    correct_predictions = (predicted_labels == targets).sum().item()
-    return group_data(correct_predictions, groups)[0].mean(dim=1)
+    correct_predictions = (predicted_labels == targets).float()
+    r = group_data(correct_predictions, groups)
+    return r
 '''
  mean accuracy_1(...) :
 
